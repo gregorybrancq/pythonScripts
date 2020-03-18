@@ -7,17 +7,28 @@ It will compute the different backups configuration, turn off/on screens to redu
 
 To power up computer when it is in sleep mode :
 https://forum.ubuntu-fr.org/viewtopic.php?id=1992493
+
+To launch this program after resuming :
+Create a file in  /lib/systemd/system-sleep/backupNight
+#!/bin/sh
+case $1/$2 in
+  post/*)
+    echo "Execute backupNight script in /lib/systemd/system-sleep..."
+    /home/greg/Greg/work/env/bin/backupNight
+    # Place your post suspend (resume) commands here, or `exit 0` if no post suspend action required
+    ;;
+esac
 """
 
 import os
 import subprocess
 import sys
-import datetime
+from datetime import datetime
 from optparse import OptionParser
 
-sys.path.append('../pythonCommon')
+sys.path.append('/home/greg/Greg/work/env/projects/pythonCommon')
 from progDisEn import ProgEnDis
-from basic import sendMail
+from mail import sendMail
 
 
 ##############################################
@@ -89,8 +100,11 @@ progName = "backupNight"
 #
 #logFile = os.path.join(logDir, progName + "_"
 #                       + str(datetime.today().isoformat("_") + ".log"))
+configFile  = os.path.join("/home/greg/Greg/work/config", progName, progName + ".cfg")
 runningFile = os.path.join("/tmp", progName + ".running")
 disableFile = os.path.join("/tmp", progName + ".disable")
+
+userMail = "gregory.brancq@free.fr"
 
 ##############################################
 
@@ -112,38 +126,19 @@ class Backups:
         return res
 
     def add(self):
-        #self.cfgs["home"] = Backup(periods=["yearly", "monthly", "weekly", "daily"], cfgFile="/home/greg/Greg/work/config/rsnapshot/rsnapshot_home.conf")
-        self.cfgs["vps"] = Backup(periods=["yearly", "monthly", "weekly", "daily"], cfgFile="/home/greg/Greg/work/config/rsnapshot/rsnapshot_vps.conf")
+        self.cfgs["home"] = Backup(name="Home", periods=["yearly", "monthly", "weekly", "daily"],
+                                   cfgFile="/home/greg/Greg/work/config/rsnapshot/rsnapshot_home.conf")
+        self.cfgs["vps"] = Backup(name="Vps", periods=["yearly", "monthly", "weekly", "daily"],
+                                  cfgFile="/home/greg/Greg/work/config/rsnapshot/rsnapshot_vps.conf")
 
     def run(self):
         for cfg in self.cfgs.keys():
             self.cfgs[cfg].run()
 
-# Backup Home
-#retain	daily	7
-#retain	weekly	5
-#retain	monthly	6
-#retain	yearly	4
-#
-#30 12   *   *   *    nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_home.conf daily 2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Home : daily"  gregory.brancq@free.fr
-#20 12   *   *   1    nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_home.conf weekly  2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Home : weekly" gregory.brancq@free.fr
-#10 12  1-7  *   *    [ "$(date '+\%u')" -eq 1 ] && nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_home.conf monthly 2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Home : monthly" gregory.brancq@free.fr
-#00 12  1-7 1,4,8,12  *    [ "$(date '+\%u')" -eq 1 ] && nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_home.conf yearly 2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Home : yearly" gregory.brancq@free.fr
-
-# Backup Vps
-#retain	daily	7
-#retain	weekly	5
-#retain	monthly	6
-#retain	yearly	4
-#
-#30 18   *   *   *    nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_vps.conf daily 2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Vps : daily"  gregory.brancq@free.fr
-#20 18   *   *   1    nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_vps.conf weekly  2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Vps : weekly" gregory.brancq@free.fr
-#10 18  1-7  *   *    [ "$(date '+\%u')" -eq 1 ] && nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_vps.conf monthly 2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Vps : monthly" gregory.brancq@free.fr
-#00 18  1-7 1,4,8,12  *    [ "$(date '+\%u')" -eq 1 ] && nice /usr/bin/rsnapshot -c /home/greg/Greg/work/config/rsnapshot/rsnapshot_vps.conf yearly 2>&1 | /usr/local/bin/rsnapreport.pl | mail -s "Rsnapshot Vps : yearly" gregory.brancq@free.fr
-
 
 class Backup:
-    def __init__(self, periods, cfgFile):
+    def __init__(self, name, periods, cfgFile):
+        self.name = name
         self.periods = periods
         self.cfg = cfgFile
         self.cmd = str()
@@ -155,40 +150,41 @@ class Backup:
         return res
 
     def run(self):
-        cmd = str()
         for period in self.periods:
             periodC = Period(period)
             if periodC.canBeLaunch() :
-                cmd += "/usr/bin/rsnapshot -c " +  self.cfg + " " + period
-                #cmd += "| /usr/local/bin/rsnapreport.pl "
-                #cmd += "| mail -s 'Rsnapshot Vps : " + period + "' gregory.brancq@free.fr"
-                cmdL = cmd.split(" ")
+                cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
                 if parsedArgs.dry_run:
-                    print("Command to launch :\n" + cmd)
+                    print("Command to launch :\n" + str(cmd))
                 else:
-                    proc = subprocess.Popen(cmdL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    proc.wait()
-                    res = proc.communicate()
+                    procBackup = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    res = procBackup.communicate()
                     msg = res[0]
                     err = res[1]
-                    print("Message = " + msg)
-                    print("Error   = " + err)
-                    if proc.returncode == 0 :
-                        sendMail(From="gregory.brancq@free.fr", To="gregory.brancq@free.fr",
-                                 Subject="Rsnapshot Vps : " + period, MessageText="No error with backup : \nMessage = "
-                                        "\n" + str(msg) + "\nError = \n" + str(err))
+                    if procBackup.returncode == 0 :
+                        if period == "daily" :
+                            procParsed = subprocess.Popen(["/usr/local/bin/rsnapreport.pl"],
+                                        stdin = subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                            outReport = procParsed.communicate(input=msg)[0]
+                            sendMail(From=userMail, To=userMail,
+                                     Subject="Rsnapshot " + self.name + " : " + period,
+                                     Message=outReport + "\n\nMessage log :\n" + msg + "\n\nError log : \n" + err)
+                        else :
+                            sendMail(From=userMail, To=userMail,
+                                     Subject="Rsnapshot " + self.name + " : " + period,
+                                     Message="Message log :\n" + msg + "\n\nError log : \n" + err)
                     else :
-                        sendMail(From="gregory.brancq@free.fr", To="gregory.brancq@free.fr",
-                                 Subject="Rsnapshot Vps : " + period, MessageText="Error with backup : \nMessage = "
-                                        "\n" + str(msg) + "\nError = \n" + str(err))
+                        sendMail(From=userMail, To=userMail,
+                                 Subject="Error with rsnapshot " + self.name + " : " + period,
+                                 Message="Error log : \n" + err + "\n\nMessage log :\n" + msg)
 
 
 class Period:
 
     def __init__(self, periodName):
-        self.curDay = datetime.datetime.now().weekday()
-        self.curDate = datetime.datetime.now().day
-        self.curMonth = datetime.datetime.now().month
+        self.curDay = datetime.now().weekday()
+        self.curDate =datetime.now().day
+        self.curMonth = datetime.now().month
         self.period = periodName
         self.level = str()
         self.cmd = str()
@@ -217,11 +213,51 @@ class Period:
 # Functions
 ##############################################
 
+def inGoodTime():
+    curHour = datetime.now().hour
+    if curHour >= 16 :
+        return True
+    return False
+
+def alreadyLaunchedToday():
+    if not os.path.isfile(configFile) :
+        return False
+    else :
+        fd = open(configFile, 'r')
+        dateFileStr = fd.read().rstrip('\n')
+        try :
+            configDate = datetime.strptime(dateFileStr, "%Y-%m-%d")
+        except ValueError :
+            return True
+        currentDT = datetime.now().date()
+        if configDate == currentDT:
+            return True
+        return False
+
+def createCfgFile():
+    if os.path.isfile(configFile) :
+        os.remove(configFile)
+    try :
+        fd = open(configFile, 'w')
+        fd.write(str(datetime.now().date()))
+        fd.close()
+    except :
+        print("Error during configFile creation " + configFile)
+
 def computeBackups():
     backups = Backups()
     if parsedArgs.dry_run:
         print(str(backups))
     backups.run()
+
+def computeWake():
+    # to wakeup computer
+    #echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
+    # to check
+    #grep 'al\|time' < /proc/driver/rtc
+    cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow 03:00:00" +%s  > ' \
+          '/sys/class/rtc/rtc0/wakealarm '
+    os.system(cmd)
 
 def screenOn():
     subprocess.call(["xset", "dpms", "force", "on"])
@@ -238,40 +274,39 @@ def screenOff():
 ##############################################
 ##############################################
 
-
 def main():
-    # to wakeup computer
-    #echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
-    # to check
-    #grep 'al\|time' < /proc/driver/rtc
-    # once it's done, you have to reprogram it
+    # program enable/disable
+    progEnDis = ProgEnDis(disableFile=disableFile)
 
-    # be sure that backup is not running
-    if not(os.path.isfile(runningFile)):
-        # create a specific file to indicate program is running
-        open(runningFile, "w")
+    if parsedArgs.backup_now:
+        computeBackups()
+    elif parsedArgs.enable:
+        progEnDis.progEnable()
+    elif parsedArgs.disable:
+        progEnDis.progDisable()
+    else:
+        # be sure that backup is not running
+        if not(os.path.isfile(runningFile)):
+            # Be sure that it has not been already launched today
+            # and that it's the good time to launch it 3h < x < 4h
+            if not alreadyLaunchedToday() and inGoodTime() :
+                # create configFile with today date
+                createCfgFile()
 
-        # program enable/disable
-        progEnDis = ProgEnDis(disableFile=disableFile)
-
-        if parsedArgs.backup_now:
-            computeBackups()
-        elif parsedArgs.enable:
-            progEnDis.setEnable()
-        elif parsedArgs.disable:
-            progEnDis.setDisable()
-        else:
-            if progEnDis.isEnable():
-                # shutdown screens to reduce power consuming
-                #screenOff() TODO reactivate
-                # compute backups
-                computeBackups()
-                # power up screens
-                #screenOn()
-
-        # delete the working specific file
-        if os.path.isfile(runningFile):
-            os.remove(runningFile)
+                if progEnDis.isEnable():
+                    # create a specific file to indicate program is running
+                    open(runningFile, "w")
+                    # shutdown screens to reduce power consuming
+                    screenOff()
+                    # compute backups
+                    computeBackups()
+                    # power up screens
+                    screenOn()
+                    # program the next wake
+                    computeWake()
+                    # delete the working specific file
+                    if os.path.isfile(runningFile):
+                        os.remove(runningFile)
 
 
 if __name__ == '__main__':
