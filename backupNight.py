@@ -30,7 +30,6 @@ sys.path.append('/home/greg/Greg/work/env/projects/pythonCommon')
 from progDisEn import ProgEnDis
 from mail import sendMail
 
-
 ##############################################
 #              Line Parsing                 ##
 ##############################################
@@ -92,19 +91,20 @@ progName = "backupNight"
 
 # TODO logging
 ## load config
-#logging.config.fileConfig(os.path.join(scriptDir, 'logging.conf'))
+# logging.config.fileConfig(os.path.join(scriptDir, 'logging.conf'))
 ## disable logging
-#logging.disable(sys.maxsize)
+# logging.disable(sys.maxsize)
 ## create logger
-#log = logging.getLogger(progName)
+# log = logging.getLogger(progName)
 #
-#logFile = os.path.join(logDir, progName + "_"
+# logFile = os.path.join(logDir, progName + "_"
 #                       + str(datetime.today().isoformat("_") + ".log"))
-configFile  = os.path.join("/home/greg/Greg/work/config", progName, progName + ".cfg")
+configFile = os.path.join("/home/greg/Greg/work/config", progName, progName + ".cfg")
 runningFile = os.path.join("/tmp", progName + ".running")
 disableFile = os.path.join("/tmp", progName + ".disable")
 
 userMail = "gregory.brancq@free.fr"
+
 
 ##############################################
 
@@ -152,7 +152,7 @@ class Backup:
     def run(self):
         for period in self.periods:
             periodC = Period(period)
-            if periodC.canBeLaunch() :
+            if periodC.canBeLaunch():
                 cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
                 if parsedArgs.dry_run:
                     print("Command to launch :\n" + str(cmd))
@@ -161,19 +161,20 @@ class Backup:
                     res = procBackup.communicate()
                     msg = res[0]
                     err = res[1]
-                    if procBackup.returncode == 0 :
-                        if period == "daily" :
+                    if procBackup.returncode == 0:
+                        if period == "daily":
                             procParsed = subprocess.Popen(["/usr/local/bin/rsnapreport.pl"],
-                                        stdin = subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                                          stderr=subprocess.PIPE)
                             outReport = procParsed.communicate(input=msg)[0]
                             sendMail(From=userMail, To=userMail,
                                      Subject="Rsnapshot " + self.name + " : " + period,
                                      Message=outReport + "\n\nMessage log :\n" + msg + "\n\nError log : \n" + err)
-                        else :
+                        else:
                             sendMail(From=userMail, To=userMail,
                                      Subject="Rsnapshot " + self.name + " : " + period,
                                      Message="Message log :\n" + msg + "\n\nError log : \n" + err)
-                    else :
+                    else:
                         sendMail(From=userMail, To=userMail,
                                  Subject="Error with rsnapshot " + self.name + " : " + period,
                                  Message="Error log : \n" + err + "\n\nMessage log :\n" + msg)
@@ -183,7 +184,7 @@ class Period:
 
     def __init__(self, periodName):
         self.curDay = datetime.now().weekday()
-        self.curDate =datetime.now().day
+        self.curDate = datetime.now().day
         self.curMonth = datetime.now().month
         self.period = periodName
         self.level = str()
@@ -193,18 +194,19 @@ class Period:
         if self.period == "daily":
             return True
         elif self.period == "weekly":
-            if self.curDay == 0 : # monday
+            if self.curDay == 0:  # monday
                 return True
         elif self.period == "monthly":
-            if self.curDay == 0 : # monday
-                if self.curDate < 8 : # first week of the month
+            if self.curDay == 0:  # monday
+                if self.curDate < 8:  # first week of the month
                     return True
         elif self.period == "yearly":
-            if self.curDay == 0 : # monday
-                if self.curDate < 8 : # first week of the month
-                    if self.curMonth == 1 or self.curMonth == 7 : # month : january(=1) or july(=7)
+            if self.curDay == 0:  # monday
+                if self.curDate < 8:  # first week of the month
+                    if self.curMonth == 1 or self.curMonth == 7:  # month : january(=1) or july(=7)
                         return True
         return False
+
 
 ##############################################
 
@@ -215,34 +217,38 @@ class Period:
 
 def inGoodTime():
     curHour = datetime.now().hour
-    if curHour >= 3 :
+    if curHour >= 3:
         return True
     return False
 
+
 def alreadyLaunchedToday():
-    if not os.path.isfile(configFile) :
+    if not os.path.isfile(configFile):
         return False
-    else :
+    else:
         fd = open(configFile, 'r')
         dateFileStr = fd.read().rstrip('\n')
-        try :
+        try:
             configDate = datetime.strptime(dateFileStr, "%Y-%m-%d")
-        except ValueError :
+        except ValueError:
             return True
         currentDT = datetime.now().date()
         if configDate == currentDT:
             return True
         return False
 
+
 def createCfgFile():
-    if os.path.isfile(configFile) :
+    if os.path.isfile(configFile):
         os.remove(configFile)
-    try :
+    try:
         fd = open(configFile, 'w')
         fd.write(str(datetime.now().date()))
         fd.close()
-    except :
+        os.chown(configFile, 1000, 1000)
+    except:
         print("Error during configFile creation " + configFile)
+
 
 def computeBackups():
     backups = Backups()
@@ -250,20 +256,24 @@ def computeBackups():
         print(str(backups))
     backups.run()
 
+
 def computeWake():
     # to wakeup computer
-    #echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
+    # echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
     # to check
-    #grep 'al\|time' < /proc/driver/rtc
+    # grep 'al\|time' < /proc/driver/rtc
     cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow 03:00:00" +%s  > ' \
           '/sys/class/rtc/rtc0/wakealarm '
     os.system(cmd)
 
+
 def screenOn():
     subprocess.call(["xset", "dpms", "force", "on"])
 
+
 def screenOff():
     subprocess.call(["xset", "dpms", "force", "off"])
+
 
 ##############################################
 
@@ -286,10 +296,10 @@ def main():
         progEnDis.progDisable()
     else:
         # be sure that backup is not running
-        if not(os.path.isfile(runningFile)):
+        if not (os.path.isfile(runningFile)):
             # Be sure that it has not been already launched today
             # and that it's the good time to launch it 3h < x < 4h
-            if not alreadyLaunchedToday() and inGoodTime() :
+            if not alreadyLaunchedToday() and inGoodTime():
                 # create configFile with today date
                 createCfgFile()
 
