@@ -215,7 +215,7 @@ class Period:
 
 def inGoodTime():
     curHour = datetime.now().hour
-    if curHour >= 16 :
+    if curHour >= 3 :
         return True
     return False
 
