@@ -8,27 +8,19 @@ It will compute the different backups configuration, turn off/on screens to redu
 To power up computer when it is in sleep mode :
 https://forum.ubuntu-fr.org/viewtopic.php?id=1992493
 
-To launch this program after resuming :
-Create a file in  /lib/systemd/system-sleep/backupNight
-#!/bin/sh
-case $1/$2 in
-  post/*)
-    echo "Execute backupNight script in /lib/systemd/system-sleep..."
-    /home/greg/Greg/work/env/bin/backupNight
-    # Place your post suspend (resume) commands here, or `exit 0` if no post suspend action required
-    ;;
-esac
+To launch this program after resuming, see backupNightWakeUp.sh file
 """
-
 import os
 import subprocess
 import sys
+import logging.config
 from datetime import datetime
 from optparse import OptionParser
 
 sys.path.append('/home/greg/Greg/work/env/projects/pythonCommon')
 from progDisEn import ProgEnDis
 from mail import sendMail
+from basic import getScriptDir, getLogDir
 
 ##############################################
 #              Line Parsing                 ##
@@ -89,16 +81,20 @@ parser.add_option(
 
 progName = "backupNight"
 
-# TODO logging
-## load config
-# logging.config.fileConfig(os.path.join(scriptDir, 'logging.conf'))
-## disable logging
+# directory
+scriptDir = getScriptDir()
+logDir = getLogDir()
+
+# load config
+logging.config.fileConfig(os.path.join(scriptDir, 'logging.conf'))
+# disable logging
 # logging.disable(sys.maxsize)
-## create logger
-# log = logging.getLogger(progName)
-#
-# logFile = os.path.join(logDir, progName + "_"
-#                       + str(datetime.today().isoformat("_") + ".log"))
+# create logger
+log = logging.getLogger(progName)
+
+logFile = os.path.join(logDir, progName + "_"
+                       + str(datetime.today().isoformat("_") + ".log"))
+
 configFile = os.path.join("/home/greg/Greg/work/config", progName, progName + ".cfg")
 runningFile = os.path.join("/tmp", progName + ".running")
 disableFile = os.path.join("/tmp", progName + ".disable")
@@ -151,33 +147,43 @@ class Backup:
 
     def run(self):
         for period in self.periods:
+            log.info("In  Backup run period=" + str(period))
             periodC = Period(period)
             if periodC.canBeLaunch():
+                log.info("In  Backup run can be launch")
                 cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
                 if parsedArgs.dry_run:
                     print("Command to launch :\n" + str(cmd))
                 else:
+                    log.info("In  Backup before procBackup")
                     procBackup = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     res = procBackup.communicate()
                     msg = res[0]
+                    log.info("In  Backup msg=" + str(msg))
                     err = res[1]
+                    log.info("In  Backup err=" + str(err))
+                    log.info("In  Backup returnCode=" + str(procBackup.returncode))
                     if procBackup.returncode == 0:
                         if period == "daily":
                             procParsed = subprocess.Popen(["/usr/local/bin/rsnapreport.pl"],
                                                           stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                                           stderr=subprocess.PIPE)
                             outReport = procParsed.communicate(input=msg)[0]
+                            log.info("In  Backup daily sendmail outReport=" + str(outReport))
                             sendMail(From=userMail, To=userMail,
                                      Subject="Rsnapshot " + self.name + " : " + period,
                                      Message=outReport + "\n\nMessage log :\n" + msg + "\n\nError log : \n" + err)
                         else:
+                            log.info("In  Backup not daily sendmail")
                             sendMail(From=userMail, To=userMail,
                                      Subject="Rsnapshot " + self.name + " : " + period,
                                      Message="Message log :\n" + msg + "\n\nError log : \n" + err)
                     else:
+                        log.info("In  Backup error")
                         sendMail(From=userMail, To=userMail,
-                                 Subject="Error with rsnapshot " + self.name + " : " + period,
+                                 Subject="Error Rsnapshot " + self.name + " : " + period,
                                  Message="Error log : \n" + err + "\n\nMessage log :\n" + msg)
+            log.info("Out Backup run")
 
 
 class Period:
@@ -216,48 +222,66 @@ class Period:
 ##############################################
 
 def inGoodTime():
+    log.info("In  inGoodTime")
     curHour = datetime.now().hour
-    if curHour >= 3:
+    if curHour >= 3 and curHour < 4:
+        log.info("In  inGoodTime True curHour=" + str(curHour))
         return True
+    log.info("In  inGoodTime False curHour=" + str(curHour))
     return False
 
 
 def alreadyLaunchedToday():
+    log.info("In  alreadyLaunchedToday")
     if not os.path.isfile(configFile):
+        log.info("In  alreadyLaunchedToday no configFile")
         return False
     else:
+        log.info("In  alreadyLaunchedToday configFile")
         fd = open(configFile, 'r')
         dateFileStr = fd.read().rstrip('\n')
         try:
             configDate = datetime.strptime(dateFileStr, "%Y-%m-%d")
+            log.info("In  alreadyLaunchedToday configDate=" + str(configDate))
         except ValueError:
+            log.info("In  alreadyLaunchedToday configDate valueError")
             return True
         currentDT = datetime.now().date()
+        log.info("In  alreadyLaunchedToday currentDT=" + str(currentDT))
         if configDate == currentDT:
+            log.info("In  alreadyLaunchedToday configDate=currentDT")
             return True
+        log.info("In  alreadyLaunchedToday configDate!=currentDT")
         return False
 
 
 def createCfgFile():
+    log.info("In  createCfgFile")
     if os.path.isfile(configFile):
+        log.info("In  createCfgFile remove file")
         os.remove(configFile)
     try:
+        log.info("In  createCfgFile create file")
         fd = open(configFile, 'w')
         fd.write(str(datetime.now().date()))
         fd.close()
         os.chown(configFile, 1000, 1000)
     except:
         print("Error during configFile creation " + configFile)
+    log.info("Out createCfgFile")
 
 
 def computeBackups():
+    log.info("In  computeBackups")
     backups = Backups()
     if parsedArgs.dry_run:
         print(str(backups))
     backups.run()
+    log.info("Out computeBackups")
 
 
 def computeWake():
+    log.info("In  computeWake")
     # to wakeup computer
     # echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
     # to check
@@ -265,6 +289,7 @@ def computeWake():
     cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow 03:00:00" +%s  > ' \
           '/sys/class/rtc/rtc0/wakealarm '
     os.system(cmd)
+    log.info("Out computeWake")
 
 
 def screenOn():
@@ -285,6 +310,7 @@ def screenOff():
 ##############################################
 
 def main():
+    log.info("In  main")
     # program enable/disable
     progEnDis = ProgEnDis(disableFile=disableFile)
 
@@ -295,28 +321,36 @@ def main():
     elif parsedArgs.disable:
         progEnDis.progDisable()
     else:
+        log.info("In  main check if runningFile is not present")
         # be sure that backup is not running
         if not (os.path.isfile(runningFile)):
+            log.info("In  main check runningFile is not present")
             # Be sure that it has not been already launched today
             # and that it's the good time to launch it 3h < x < 4h
             if not alreadyLaunchedToday() and inGoodTime():
+                log.info("In  main good time and not launched today")
                 # create configFile with today date
                 createCfgFile()
 
                 if progEnDis.isEnable():
+                    log.info("In  main isEnable")
                     # create a specific file to indicate program is running
+                    log.info("In  main create running file")
                     open(runningFile, "w")
                     # shutdown screens to reduce power consuming
-                    screenOff()
+                    # screenOff()
                     # compute backups
                     computeBackups()
                     # power up screens
-                    screenOn()
+                    # screenOn()
                     # program the next wake
                     computeWake()
                     # delete the working specific file
                     if os.path.isfile(runningFile):
+                        log.info("In  main remove running file")
                         os.remove(runningFile)
+
+    log.info("Out main")
 
 
 if __name__ == '__main__':
