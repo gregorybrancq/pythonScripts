@@ -81,6 +81,9 @@ parser.add_option(
 
 progName = "backupNight"
 
+# when the computer will wake up
+wakeUpHour = 3
+
 # directory
 scriptDir = getScriptDir()
 logDir = getLogDir()
@@ -221,10 +224,13 @@ class Period:
 # Functions
 ##############################################
 
+# Check that it's the good time to launch
 def inGoodTime():
     log.info("In  inGoodTime")
     curHour = datetime.now().hour
-    if curHour >= 3 and curHour < 4:
+    # Relative to when the computer must be wake up
+    # be careful between utc and local time.
+    if curHour >= wakeUpHour and curHour < wakeUpHour+1:
         log.info("In  inGoodTime True curHour=" + str(curHour))
         return True
     log.info("In  inGoodTime False curHour=" + str(curHour))
@@ -286,8 +292,9 @@ def computeWake():
     # echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
     # to check
     # grep 'al\|time' < /proc/driver/rtc
-    cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow 03:00:00" +%s  > ' \
-          '/sys/class/rtc/rtc0/wakealarm '
+    # this is utc time (so here minus 1)
+    cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow ' + str(wakeUpHour-1) \
+            + ':00:00" +%s  > /sys/class/rtc/rtc0/wakealarm '
     os.system(cmd)
     log.info("Out computeWake")
 
