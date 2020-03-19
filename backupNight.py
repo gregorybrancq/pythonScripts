@@ -338,11 +338,11 @@ def main():
                     log.info("In  main create running file")
                     open(runningFile, "w")
                     # shutdown screens to reduce power consuming
-                    # screenOff()
+                    screenOff()
                     # compute backups
                     computeBackups()
                     # power up screens
-                    # screenOn()
+                    screenOn()
                     # program the next wake
                     computeWake()
                     # delete the working specific file
