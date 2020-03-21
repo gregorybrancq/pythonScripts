@@ -17,7 +17,7 @@ import logging.config
 from datetime import datetime
 from optparse import OptionParser
 
-sys.path.append('/home/greg/Greg/work/env/projects/pythonCommon')
+sys.path.append('/home/greg/Greg/work/env/pythonCommon')
 from progDisEn import ProgEnDis
 from mail import sendMail
 from basic import getScriptDir, getLogDir
