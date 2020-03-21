@@ -286,8 +286,8 @@ def computeBackups():
     log.info("Out computeBackups")
 
 
-def computeWake():
-    log.info("In  computeWake")
+def programNextWakeUp():
+    log.info("In  programNextWakeUp")
     # to wakeup computer
     # echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
     # to check
@@ -296,7 +296,7 @@ def computeWake():
     cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow ' + str(wakeUpHour-1) \
             + ':00:00" +%s  > /sys/class/rtc/rtc0/wakealarm '
     os.system(cmd)
-    log.info("Out computeWake")
+    log.info("Out programNextWakeUp")
 
 
 def screenOn():
@@ -345,13 +345,13 @@ def main():
                     log.info("In  main create running file")
                     open(runningFile, "w")
                     # shutdown screens to reduce power consuming
-                    screenOff()
+                    #screenOff()
                     # compute backups
                     computeBackups()
                     # power up screens
-                    screenOn()
-                    # program the next wake
-                    computeWake()
+                    #screenOn()
+                    # program the next wake up
+                    programNextWakeUp()
                     # delete the working specific file
                     if os.path.isfile(runningFile):
                         log.info("In  main remove running file")
