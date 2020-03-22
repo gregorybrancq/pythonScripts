@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import logging.config
+import time
 from datetime import datetime
 from optparse import OptionParser
 
@@ -336,9 +337,6 @@ def main():
             # and that it's the good time to launch it 3h < x < 4h
             if not alreadyLaunchedToday() and inGoodTime():
                 log.info("In  main good time and not launched today")
-                # create configFile with today date
-                createCfgFile()
-
                 if progEnDis.isEnable():
                     log.info("In  main isEnable")
                     # create a specific file to indicate program is running
@@ -346,12 +344,16 @@ def main():
                     open(runningFile, "w")
                     # shutdown screens to reduce power consuming
                     #screenOff()
+                    # wait that computer is totally wake up
+                    time.sleep(120)
                     # compute backups
                     computeBackups()
                     # power up screens
                     #screenOn()
                     # program the next wake up
                     programNextWakeUp()
+                    # create configFile with today date
+                    createCfgFile()
                     # delete the working specific file
                     if os.path.isfile(runningFile):
                         log.info("In  main remove running file")
