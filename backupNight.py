@@ -14,7 +14,6 @@ import os
 import subprocess
 import sys
 import logging.config
-import time
 from datetime import datetime
 from optparse import OptionParser
 
@@ -344,8 +343,6 @@ def main():
                     open(runningFile, "w")
                     # shutdown screens to reduce power consuming
                     #screenOff()
-                    # wait that computer is totally wake up
-                    time.sleep(120)
                     # compute backups
                     computeBackups()
                     # power up screens
