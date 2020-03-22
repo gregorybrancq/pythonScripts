@@ -7,6 +7,7 @@ It will compute the different backups configuration, turn off/on screens to redu
 
 """
 import os
+import smtplib
 import subprocess
 import sys
 import logging.config
@@ -154,7 +155,7 @@ class Backup:
                 if parsedArgs.dry_run:
                     print("Command to launch :\n" + str(cmd))
                 else:
-                    log.info("In  Backup before procBackup")
+                    log.info("In  Backup run procBackup=" + str(cmd))
                     procBackup = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     res = procBackup.communicate()
                     msg = res[0]
@@ -169,9 +170,14 @@ class Backup:
                                                           stderr=subprocess.PIPE)
                             outReport = procParsed.communicate(input=msg)[0]
                             log.info("In  Backup daily sendmail outReport=" + str(outReport))
-                            sendMail(From=userMail, To=userMail,
-                                     Subject="Rsnapshot " + self.name + " : " + period,
-                                     Message=outReport + "\n\nMessage log :\n" + msg + "\n\nError log : \n" + err)
+                            try :
+                                sendMail(From=userMail, To=userMail,
+                                         Subject="Rsnapshot " + self.name + " : " + period,
+                                         Message=outReport + "\n\nMessage log :\n" + msg + "\n\nError log : \n" + err)
+                            except smtplib.SMTPSenderRefused:
+                                sendMail(From=userMail, To=userMail,
+                                         Subject="Rsnapshot " + self.name + " : " + period,
+                                         Message=outReport)
                         else:
                             log.info("In  Backup not daily sendmail")
                             sendMail(From=userMail, To=userMail,
