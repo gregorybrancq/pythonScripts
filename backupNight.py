@@ -5,10 +5,6 @@
 To use computer when it is not used, make the backup during the night.
 It will compute the different backups configuration, turn off/on screens to reduce power consumption.
 
-To power up computer when it is in sleep mode :
-https://forum.ubuntu-fr.org/viewtopic.php?id=1992493
-
-To launch this program after resuming, see backupNightWakeUp.sh file
 """
 import os
 import subprocess
