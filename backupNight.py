@@ -4,8 +4,8 @@
 """
 To use computer when it is not used, make the backup during the night.
 It will compute the different backups configuration, turn off/on screens to reduce power consumption.
-
 """
+
 import os
 import smtplib
 import subprocess
