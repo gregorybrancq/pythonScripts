@@ -296,7 +296,7 @@ def programNextWakeUp():
     # grep 'al\|time' < /proc/driver/rtc
     # this is utc time (so here minus 1)
     cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow ' + str(wakeUpHour-1) \
-            + ':00:00" +%s  > /sys/class/rtc/rtc0/wakealarm '
+            + ':01:00" +%s  > /sys/class/rtc/rtc0/wakealarm '
     os.system(cmd)
     log.info("Out programNextWakeUp")
 
