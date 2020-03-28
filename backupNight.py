@@ -145,11 +145,32 @@ class Backup:
         res += "  periods     = " + str(self.periods) + "\n"
         return res
 
+    def _rsyncData(self, src, dst):
+        print("  " + src + " to " + dst)
+        cmd = "rsync -rulpgvz --delete "
+        cmd += src + " " + dst
+        procPopen = subprocess.Popen(cmd, shell=True)
+        procPopen.wait()
+        if procPopen.returncode != 0:
+            print("Error during rsync data")
+    
+    # copy local data to config directory
+    def _copyLocalData(self):
+        print("Copy thunderbird data :")
+        self._rsyncData("/media/perso/data/thunderbird/*", "/home/greg/Greg/work/config/thunderbird/Home")
+    
+        print("Copy firefox data :")
+        self._rsyncData("/media/perso/data/firefox/*", "/home/greg/Greg/work/config/firefox/Home")
+
     def run(self):
         for period in self.periods:
             log.info("In  Backup run period=" + str(period))
             periodC = Period(period)
             if periodC.canBeLaunch():
+                if period == "weekly":
+                    log.info("In  Backup run sync data")
+                    self._copyLocalData()
+
                 log.info("In  Backup run can be launch")
                 cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
                 if parsedArgs.dry_run:
