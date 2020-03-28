@@ -7,7 +7,7 @@
 """
 Program to check which unison configuration using and launch the synchronisation
 """
-
+from datetime import datetime
 import os
 import re
 import sys
@@ -145,7 +145,8 @@ def main():
         MessageDialog(type_='error', title="Automatic Synchronisation",
                       message="Can't find Remote IP.\nLocal IP is " + str(localIp) + ".").run()
     else:
-        if parsedArgs.syncLocalData:
+        # if switch enabled or current day is sunday
+        if (parsedArgs.syncLocalData) or (datetime.now().weekday() == 6):
             copyLocalData(localCfg, remoteCfg)
         runSync(localCfg, remoteCfg)
 
