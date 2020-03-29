@@ -94,7 +94,7 @@ def main() :
     ## Launch the ftp free program
     out = ""
     err = ""
-    cmdToLaunch=getBinDir() + '/ftp-free "' + str(fileN) + '"'
+    cmdToLaunch='/home/greg/Greg/work/env/shellScripts/ftp-free.sh "' + str(fileN) + '"'
     log.info(HEADER, "In  main cmdToLaunch=" + str(cmdToLaunch))
     procPopen = Popen(cmdToLaunch, shell=True, stdout=PIPE, stderr=PIPE)
     out, err = procPopen.communicate()
