@@ -5,7 +5,8 @@
 # Public domain software
 
 """
-Program to check which unison configuration using and launch the synchronisation
+Program to specify automatically which unison configuration to use
+Launch the synchronisation
 """
 from datetime import datetime
 import os
@@ -15,9 +16,8 @@ import subprocess
 import socket
 from optparse import OptionParser
 
-sys.path.append('/home/greg/Greg/work/env/pythonCommon')
+sys.path.append('../pythonCommon')
 from message import MessageDialog
-
 
 ##############################################
 # Global variables
@@ -34,9 +34,13 @@ ipName["192.168.33.29"] = "portable_office"
 ipName["10.42.0.146"] = "portable_shared_internet"
 
 extDisk = "/media/greg/Transcend_600Go"
+thunderbird_source = "/media/perso/data/thunderbird/*"
+thunderbird_target = "/home/greg/Greg/work/config/thunderbird/Portable"
+firefox_source = "/media/perso/data/firefox/*"
+firefox_target = "/home/greg/Greg/work/config/firefox/Portable"
 
 ##############################################
-#              Line Parsing                 ##
+#              Line Parsing
 ##############################################
 
 parser = OptionParser()
@@ -51,8 +55,8 @@ parser.add_option(
 
 (parsedArgs, args) = parser.parse_args()
 
-
 ##############################################
+
 
 def getIp():
     # print([(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET,
@@ -61,21 +65,21 @@ def getIp():
     try:
         # doesn't even have to be reachable
         s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
+        ip = s.getsockname()[0]
     except:
-        IP = '127.0.0.1'
+        ip = '127.0.0.1'
     finally:
         s.close()
-    return IP
+    return ip
 
 
 def checkAddress(ad):
     """Check if address pings"""
     print("Check address " + ad)
-    runCmd = "ping -w 1 " + str(ad)
-    procPopen = subprocess.Popen(runCmd, shell=True)
-    procPopen.wait()
-    if procPopen.returncode == 0:
+    cmd = "ping -w 1 " + str(ad)
+    proc = subprocess.Popen(cmd, shell=True)
+    proc.wait()
+    if proc.returncode == 0:
         return True
     return False
 
@@ -84,71 +88,71 @@ def rsyncData(src, dst):
     print("  " + src + " to " + dst)
     cmd = "rsync -rulpgvz --delete "
     cmd += src + " " + dst
-    procPopen = subprocess.Popen(cmd, shell=True)
-    procPopen.wait()
-    if procPopen.returncode != 0:
+    proc = subprocess.Popen(cmd, shell=True)
+    proc.wait()
+    if proc.returncode != 0:
         print("Error during rsync data")
 
 
 # copy local data to config directory
-def copyLocalData(localCfg, remoteCfg):
-    if (localCfg == "portable") and (remoteCfg == "server"):
+def copyLocalData(local_config, remote_config):
+    if (local_config == "portable") and (remote_config == "server"):
         print("Copy thunderbird data :")
-        rsyncData("/media/perso/data/thunderbird/*", "/home/greg/Greg/work/config/thunderbird/Portable")
+        rsyncData(thunderbird_source, thunderbird_target)
 
         print("Copy firefox data :")
-        rsyncData("/media/perso/data/firefox/*", "/home/greg/Greg/work/config/firefox/Portable")
+        rsyncData(firefox_source, firefox_target)
 
 
-def runSync(localCfg, remoteCfg):
-    cfgName = localCfg + "-to-" + remoteCfg + "-mode_sata.prf"
-    print("Run sync " + cfgName)
-    unisonCfgFile = os.path.join(os.getenv("HOME"), ".unison", cfgName)
-    if os.path.isfile(unisonCfgFile):
-        runCmd = "unison-gtk " + str(cfgName)
-        procPopen = subprocess.Popen(runCmd, shell=True)
-        procPopen.wait()
+def runSync(local_config, remote_config):
+    name = local_config + "-to-" + remote_config + "-mode_sata.prf"
+    print("Run sync " + name)
+    unison_file = os.path.join(os.getenv("HOME"), ".unison", name)
+    if os.path.isfile(unison_file):
+        cmd = "unison-gtk " + str(name)
+        proc = subprocess.Popen(cmd, shell=True)
+        proc.wait()
     else:
-        print("Your config " + unisonCfgFile + " doesn't exist")
+        print("Your config " + unison_file + " doesn't exist")
 
 
 def main():
-    remoteCfg = ""
-    remoteTarget = ""
+    remote_config = ""
+    remote_target = ""
 
-    localIp = getIp()
-    print "Local IP=" + str(localIp)
-    localCfg = ipName[localIp]
-    print "Local config=" + str(localCfg)
+    local_ip = getIp()
+    print "Local IP=" + str(local_ip)
+    local_config = ipName[local_ip]
+    print "Local config=" + str(local_config)
     # Remove _wifi to the name
-    localCfg = re.sub("_wifi", "", localCfg)
-    print "Local config 2=" + str(localCfg)
+    local_config = re.sub("_wifi", "", local_config)
+    print "Local config 2=" + str(local_config)
 
-    if re.search("portable", localCfg):
-        remoteTarget = "server"
-    elif re.search("server", localCfg):
-        remoteTarget = "portable"
+    if re.search("portable", local_config):
+        remote_target = "server"
+    elif re.search("server", local_config):
+        remote_target = "portable"
         # Check if external disk is connected
         if os.path.isdir(extDisk):
-            localCfg = "external_disk"
-            remoteCfg = "server"
+            local_config = "external_disk"
+            remote_config = "server"
 
     for remoteIp in ipName:
-        if re.search(remoteTarget, ipName[remoteIp]):
+        if re.search(remote_target, ipName[remoteIp]):
             if checkAddress(remoteIp):
-                remoteCfg = ipName[remoteIp]
+                remote_config = ipName[remoteIp]
                 print "Remote IP=" + str(remoteIp)
-                print "Remote config=" + str(remoteCfg)
+                print "Remote config=" + str(remote_config)
                 break
 
-    if remoteCfg == "":
+    if remote_config == "":
         MessageDialog(type_='error', title="Automatic Synchronisation",
-                      message="Can't find Remote IP.\nLocal IP is " + str(localIp) + ".").run()
+                      message="Can't find Remote IP.\nLocal IP is " + str(local_ip) + ".").run()
     else:
         # if switch enabled or current day is sunday
-        if (parsedArgs.syncLocalData) or (datetime.now().weekday() == 6):
-            copyLocalData(localCfg, remoteCfg)
-        runSync(localCfg, remoteCfg)
+        if parsedArgs.syncLocalData or (datetime.now().weekday() == 6):
+            copyLocalData(local_config, remote_config)
+        runSync(local_config, remote_config)
 
 
 if __name__ == '__main__':
