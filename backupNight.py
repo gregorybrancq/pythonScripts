@@ -146,6 +146,10 @@ class Backup:
                     res = process_backup.communicate()
                     msg = res[0]
                     err = res[1]
+                    message_bytes = b'\n\nMessage log :\n\n' + msg
+                    if err != "":
+                        message_bytes = b'\n\nError log : \n\n' + err + message_bytes
+                    message_string = message_bytes.decode()
                     logger.debug("In  Backup returnCode=%s, msg=%s, err=%s" % (
                         str(process_backup.returncode), str(msg), str(err)))
                     if process_backup.returncode == 0:
@@ -154,25 +158,26 @@ class Backup:
                                                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                                               stderr=subprocess.PIPE)
                             out_report = process_report.communicate(input=msg)[0]
-                            logger.info("In  Backup daily sendmail out_report=%s" % str(out_report))
+                            logger.info("In  Backup daily sendmail out_report=%s" % str(out_report.decode()))
                             try:
-                                sendMail(From=userMail, To=userMail,
-                                         Subject="Rsnapshot " + self.name + " : " + period,
-                                         Message=out_report + "\n\nMessage log :\n" + msg + "\n\nError log : \n" + err)
+                                sendMail(from_user=userMail, to_user=userMail,
+                                         subject="Rsnapshot " + self.name + " : " + period,
+                                         message=out_report.decode() + message_string)
                             except smtplib.SMTPSenderRefused:
-                                sendMail(From=userMail, To=userMail,
-                                         Subject="Rsnapshot " + self.name + " : " + period,
-                                         Message=out_report)
+                                # if message is too high to be sent by mail
+                                sendMail(from_user=userMail, to_user=userMail,
+                                         subject="Rsnapshot " + self.name + " : " + period,
+                                         message=out_report)
                         else:
                             logger.info("In  Backup not daily sendmail")
-                            sendMail(From=userMail, To=userMail,
-                                     Subject="Rsnapshot " + self.name + " : " + period,
-                                     Message="Message log :\n" + msg + "\n\nError log : \n" + err)
+                            sendMail(from_user=userMail, to_user=userMail,
+                                     subject="Rsnapshot " + self.name + " : " + period,
+                                     message=message_string)
                     else:
                         logger.info("In  Backup error")
-                        sendMail(From=userMail, To=userMail,
-                                 Subject="Error Rsnapshot " + self.name + " : " + period,
-                                 Message="Error log : \n" + err + "\n\nMessage log :\n" + msg)
+                        sendMail(from_user=userMail, to_user=userMail,
+                                 subject="Error Rsnapshot " + self.name + " : " + period,
+                                 message=message_string)
 
 
 class Period:
