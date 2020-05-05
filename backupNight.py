@@ -147,7 +147,7 @@ class Backup:
                     msg = res[0]
                     err = res[1]
                     message_bytes = b'\n\nMessage log :\n\n' + msg
-                    if err != "":
+                    if err != b'':
                         message_bytes = b'\n\nError log : \n\n' + err + message_bytes
                     message_string = message_bytes.decode()
                     logger.debug("In  Backup returnCode=%s, msg=%s, err=%s" % (
