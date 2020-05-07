@@ -20,8 +20,9 @@ def protocol_basis_3():
     s.enter(11, 1, printAction, argument=(1,))
     s.enter(12, 1, printAction, argument=(2,))
 """
-import time
 import sched
+
+import time
 
 n = 4
 

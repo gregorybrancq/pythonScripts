@@ -67,7 +67,7 @@ def main():
         # be sure that it has not been already launched today
         if not program.isLaunchedToday():
             # Check if home computer is power on and accessible
-            if checkAddress("192.168.1.101") :
+            if checkAddress("192.168.1.101"):
                 # Rsync local data
                 copyLocalData()
                 # Update config file

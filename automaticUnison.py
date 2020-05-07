@@ -10,7 +10,6 @@ import os
 import re
 import subprocess
 import sys
-import socket
 
 sys.path.append('/home/greg/Greg/work/env/pythonCommon')
 from message import MessageDialog
