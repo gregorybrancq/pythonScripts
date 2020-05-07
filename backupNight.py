@@ -16,7 +16,7 @@ from logging.handlers import RotatingFileHandler
 from optparse import OptionParser
 
 sys.path.append('/home/greg/Greg/work/env/pythonCommon')
-from progDisEn import ProgEnDis
+from program import Program
 from mail import sendMail
 from basic import getLogDir, getConfigDir
 
@@ -32,8 +32,6 @@ wakeUpHour = 3
 
 # configuration files
 configFile = os.path.join(getConfigDir(), progName, progName + ".cfg")
-runningFile = os.path.join("/tmp", progName + ".running")
-disableFile = os.path.join("/tmp", progName + ".disable")
 
 ##############################################
 #              Line Parsing                 ##
@@ -134,9 +132,6 @@ class Backup:
             logger.debug("In  Backup %s, run period=%s" % (self.name, str(period)))
             period_class = Period(period)
             if period_class.canBeLaunch():
-                if period == "weekly":
-                    syncLocalData()
-
                 cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
                 if parsed_args.dry_run:
                     logger.info("In  Backup run %s cmd=%s" % (str(period), str(cmd)))
@@ -254,38 +249,6 @@ def inGoodTime():
     return False
 
 
-def alreadyLaunchedToday():
-    if not os.path.isfile(configFile):
-        logger.info("In  alreadyLaunchedToday no configFile")
-        return False
-    else:
-        fd = open(configFile, 'r')
-        date_file_str = fd.read().rstrip('\n')
-        try:
-            config_date = datetime.strptime(date_file_str, "%Y-%m-%d")
-        except ValueError:
-            logger.debug("In  alreadyLaunchedToday config_date valueError")
-            return True
-        current_dt = datetime.now().date()
-        if config_date == current_dt:
-            logger.debug("In  alreadyLaunchedToday config_date=current_dt")
-            return True
-        logger.info(
-            "In  alreadyLaunchedToday config_date (%s) != current_dt (%s)" % (str(config_date), str(current_dt)))
-        return False
-
-
-def createCfgFile():
-    if os.path.isfile(configFile):
-        logger.debug("In  createCfgFile remove file")
-        os.remove(configFile)
-    logger.debug("In  createCfgFile create file")
-    fd = open(configFile, 'w')
-    fd.write(str(datetime.now().date()))
-    fd.close()
-    os.chown(configFile, 1000, 1000)
-
-
 def computeBackups():
     backups = Backups()
     if parsed_args.dry_run:
@@ -303,25 +266,6 @@ def programNextWakeUp():
     cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow ' + str(wakeUpHour - 2) \
           + ':01:00" +%s  > /sys/class/rtc/rtc0/wakealarm '
     os.system(cmd)
-
-
-def rsyncData(src, dst):
-    print("  " + src + " to " + dst)
-    cmd = "rsync -rulpgvz --delete "
-    cmd += src + " " + dst
-    process_sync = subprocess.Popen(cmd, shell=True)
-    process_sync.wait()
-    if process_sync.returncode != 0:
-        print("Error during rsync data")
-
-
-def syncLocalData():
-    # copy local data to config directory
-    logger.info("Copy thunderbird data")
-    rsyncData("/media/perso/data/thunderbird/*", "/home/greg/Greg/work/config/thunderbird/Home")
-
-    logger.info("Copy firefox data")
-    rsyncData("/media/perso/data/firefox/*", "/home/greg/Greg/work/config/firefox/Home")
 
 
 def screenOn():
@@ -346,31 +290,28 @@ def screenOff():
 def main():
     logger.info("START")
 
-    # program enable/disable
-    enable_disable = ProgEnDis(disable_file=disableFile)
+    # program management
+    program = Program(prog_name=progName, config_file=configFile)
 
     if parsed_args.backup_now:
         # compute backup now
         computeBackups()
     elif parsed_args.enable:
         # enable automatic backup
-        enable_disable.progEnable()
+        program.progEnable()
     elif parsed_args.disable:
-        # disable the program for one night
-        enable_disable.progDisable()
+        # disable the program for one day
+        program.progDisable()
     else:
         # be sure that backup is not running
-        if not (os.path.isfile(runningFile)):
-            logger.info("In  main, runningFile is not present")
+        if not program.isRunning():
+            program.startRunning()
             # Be sure that it has not been already launched today
             # and that it's the good time to launch it 3h < x < 4h
-            if not alreadyLaunchedToday() and inGoodTime():
+            if not program.isLaunchedToday() and inGoodTime():
                 logger.debug("In  main, in good time and not launched today")
-                if enable_disable.isEnable():
+                if program.isEnable():
                     logger.debug("In  main isEnable")
-                    # create a specific file to indicate program is running
-                    logger.debug("In  main, create running file")
-                    open(runningFile, "w")
                     # shutdown screens to reduce power consuming
                     screenOff()
                     # compute backups
@@ -381,11 +322,8 @@ def main():
                         # program the next wake up
                         programNextWakeUp()
                         # create configFile with today date
-                        createCfgFile()
-                    # delete the working specific file
-                    if os.path.isfile(runningFile):
-                        logger.info("In  main, remove running file")
-                        os.remove(runningFile)
+                        program.runToday()
+            program.stopRunning()
 
     logger.info("STOP")
 
