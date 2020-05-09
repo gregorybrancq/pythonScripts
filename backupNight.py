@@ -298,7 +298,7 @@ def main():
                         program.runToday()
             program.stopRunning()
 
-    logger.info("STOP")
+    logger.info("STOP\n")
 
 
 if __name__ == '__main__':
