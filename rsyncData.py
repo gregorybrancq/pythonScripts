@@ -31,18 +31,23 @@ thunderbird_target = remote + os.path.join(data, "thunderbird", "Portable")
 firefox_source = os.path.join(data, "firefox", "Portable", "*")
 firefox_target = remote + os.path.join(data, "firefox", "Portable")
 
+# flag
+error = False
+
 
 ##############################################
 # Functions
 ##############################################
 
 def rsyncData(src, dst):
+    global error
     logger.debug("RsyncData from %s to %s" % (src, dst))
     cmd = 'rsync -rulpgvz --delete -e "ssh -p 2832" ' + src + ' ' + dst
     logger.debug("RsyncData cmd = %s" % str(cmd))
     proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT, shell=True)
     proc.wait()
     if proc.returncode != 0:
+        error = True
         logger.error("Error during rsync data from %s to %s" % (src, dst))
 
 
@@ -70,8 +75,9 @@ def main():
             if checkAddress("192.168.1.101"):
                 # Rsync local data
                 copyLocalData()
-                # Update config file
-                program.runToday()
+                if not error:
+                    # Update config file
+                    program.runToday()
         program.stopRunning()
 
     logger.info("STOP\n")
