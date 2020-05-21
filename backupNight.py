@@ -6,7 +6,6 @@ To use computer when it is not used, make the backup during the night.
 It computes the different backups configuration, and turn off/on screens to reduce power consumption.
 """
 
-import logging
 import os
 import smtplib
 import subprocess
@@ -26,6 +25,7 @@ from log_and_parse import createLog
 
 progName = "backupNight"
 userMail = "gregory.brancq@free.fr"
+launchedIt = False
 
 # when the computer will wake up
 wakeUpHour = 3
@@ -128,6 +128,7 @@ class Backup:
         return res
 
     def run(self):
+        global launchedIt
         for period in self.periods:
             logger.debug("In  Backup %s, run period=%s" % (self.name, str(period)))
             period_class = Period(period)
@@ -137,6 +138,7 @@ class Backup:
                     logger.info("In  Backup run %s cmd=%s" % (str(period), str(cmd)))
                 else:
                     logger.info("In  Backup run %s cmd=%s" % (str(period), str(cmd)))
+                    launchedIt = True
                     process_backup = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     res = process_backup.communicate()
                     msg = res[0]
@@ -282,7 +284,6 @@ def main():
             # Be sure that it has not been already launched today
             # and that it's the good time to launch it 3h < x < 4h
             if not program.isLaunchedToday() and inGoodTime():
-                logger.debug("In  main, in good time and not launched today")
                 if program.isEnable():
                     logger.debug("In  main isEnable")
                     # shutdown screens to reduce power consuming
@@ -297,6 +298,11 @@ def main():
                         # create configFile with today date
                         program.runToday()
             program.stopRunning()
+
+        if not launchedIt:
+            sendMail(from_user=userMail, to_user=userMail,
+                     subject="Error Rsnapshot was not launched",
+                     message="Check log file.")
 
     logger.info("STOP\n")
 
