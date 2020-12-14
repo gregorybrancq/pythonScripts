@@ -13,7 +13,7 @@ import sys
 from datetime import datetime
 from optparse import OptionParser
 
-sys.path.append('/home/greg/Greg/work/env/pythonCommon')
+sys.path.append('/home/greg/Config/env/pythonCommon')
 from program import Program
 from mail import sendMail
 from basic import getConfigDir
@@ -32,6 +32,8 @@ wakeUpHour = 3
 
 # configuration files
 configFile = os.path.join(getConfigDir(), progName, progName + ".cfg")
+rsnapshotHome = "/home/greg/Config/tools/rsnapshot/rsnapshot_home.conf"
+rsnapshotVps = "/home/greg/Config/tools/rsnapshot/rsnapshot_vps.conf"
 
 ##############################################
 #              Line Parsing                 ##
@@ -105,9 +107,9 @@ class Backups:
 
     def add_backup_config(self):
         self.cfgs["home"] = Backup(name="Home", periods=["yearly", "monthly", "weekly", "daily"],
-                                   cfg_file="/home/greg/Greg/work/config/rsnapshot/rsnapshot_home.conf")
+                                   cfg_file=rsnapshotHome)
         self.cfgs["vps"] = Backup(name="Vps", periods=["yearly", "monthly", "weekly", "daily"],
-                                  cfg_file="/home/greg/Greg/work/config/rsnapshot/rsnapshot_vps.conf")
+                                  cfg_file=rsnapshotVps)
 
     def run(self):
         for cfg in self.cfgs.keys():

@@ -4,7 +4,7 @@
 #   https://forum.ubuntu-fr.org/viewtopic.php?id=1992493
 
 # This script must be linked by root user
-# ln -s /home/greg/Greg/work/env/backupNight/backupNightWakeUp.sh /lib/systemd/system-sleep/backupNightWakeUp
+# ln -s /home/greg/Config/env/backupNight/backupNightWakeUp.sh /lib/systemd/system-sleep/backupNightWakeUp
 #
 # I encountered an issue with systemd, once the program was launched, it was killed by systemd-sleep after 90s
 #   systemd-sleep: (sd-executor) terminated by signal ALRM
@@ -16,6 +16,6 @@ export XAUTHORITY=/home/greg/.Xauthority
 case $1 in
     post)
         echo "Execute backupNight script from /lib/systemd/system-sleep"
-        /home/greg/Greg/work/env/bin/backupNight
+        /home/greg/Config/env/bin/backupNight
         ;;
 esac
