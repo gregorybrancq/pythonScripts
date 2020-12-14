@@ -168,13 +168,13 @@ def getHomeDir():
     return expanduser("~greg")
 
 def getBinDir():
-    return os.path.join(getHomeDir(),"Greg/work/env/bin")
+    return os.path.join(getHomeDir(),"Config/env/bin")
 
 def getScriptDir():
-    return os.path.join(getHomeDir(),"Greg/work/env/scripts")
+    return os.path.join(getHomeDir(),"Config/env/scripts")
 
 def getEnvDir():
-    return os.path.join(getHomeDir(),"Greg/work/env")
+    return os.path.join(getHomeDir(),"Config/env")
 
 def getLogDir():
     return  os.path.join(getEnvDir(),"log")

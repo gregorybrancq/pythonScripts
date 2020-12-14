@@ -8,7 +8,7 @@ import os
 import subprocess
 import sys
 
-sys.path.append('/home/greg/Greg/work/env/pythonCommon')
+sys.path.append('/home/greg/Config/env/pythonCommon')
 from basic import getConfigDir
 from log_and_parse import createLog, parsingLine
 from program import Program
