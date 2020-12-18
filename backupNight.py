@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-To use computer when it is not used, make the backup during the night.
+To make backup task in background during the night.
 It computes the different backups configuration, and turn off/on screens to reduce power consumption.
 """
 
