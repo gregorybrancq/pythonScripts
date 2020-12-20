@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 sys.path.append('/home/greg/Config/env/pythonCommon')
-from basic import getConfigDir
+from basic import getToolsDir
 from log_and_parse import createLog, parsingLine
 from program import Program
 from network import checkAddress, getIp
@@ -60,7 +60,7 @@ def getDirName(tool):
     tool_target = str()
     if pc == "Portable":
         tool_target += remote
-    tool_target += os.path.join(getConfigDir(), tool, pc)
+    tool_target += os.path.join(getToolsDir(), tool, pc)
     logger.debug("tool_source = %s, tool_target = %s" % (tool_source, tool_target))
     return tool_source, tool_target
 
@@ -89,7 +89,7 @@ def main():
         sys.exit(1)
 
     # config file name
-    config_file = os.path.join(getConfigDir(), progName, progName + "_" + pc + ".cfg")
+    config_file = os.path.join(getToolsDir(), progName, progName + "_" + pc + ".cfg")
 
     # program management
     program = Program(prog_name=progName, config_file=config_file)
