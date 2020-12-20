@@ -1,22 +1,15 @@
 #!/usr/bin/env python
-# coding: utf-8
+# -*- coding: utf-8 -*-
 
-'''
+"""
 Screensaver Link
 
 program to scan image files to determine different tags,
 enable/disable whatever you want,
 and create link for the screensaver.
 
-'''
+"""
 
-
-
-
-
-###############################################
-# Imports
-###############################################
 
 # use for graphical interface
 import sys
@@ -47,7 +40,7 @@ from datetime import datetime
 # tags for image
 from PIL import Image
 import warnings
-# To avoid kind of warnings
+# To avoid this kind of warnings
 # /usr/lib/python2.7/dist-packages/PIL/Image.py:2514: DecompressionBombWarning: Image size (131208140 pixels) exceeds limit of 89478485 pixels, could be decompression bomb DOS attack.
 warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 
@@ -55,45 +48,36 @@ warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 import xml.etree.ElementTree as ET
 from lxml import etree
 
-## common
-from python_common import *
-HEADER = "screensaverLink"
-
-## directory
-homeDir = getHomeDir()
-logDir  = getLogDir()
-
-###############################################
-
-
+sys.path.append('/home/greg/Config/env/pythonCommon')
+from basic import getHomeDir, getToolsDir
+from log_and_parse import createLog
 
 ###############################################
 ## Global variables
 ###############################################
 
-t = str(datetime.today().isoformat("_"))
-logFile = os.path.join(logDir, HEADER + "_" + t + ".log")
-lockFile = os.path.join(logDir, HEADER + ".lock")
+progName = "screensaverLink"
 
-progIcon = os.path.join(homeDir, "Greg", "work", "config", "icons", "screensaverLink.png")
+# configuration files
+progIcon = os.path.join(getToolsDir(), "icons", "screensaverLink.png")
+
+## Official
+imagesDir = os.path.join(getHomeDir(), "Images")
+linkDir = os.path.join(getHomeDir(), "Screensaver")
+configDir = os.path.join(getToolsDir(), progName)
+configName = "config.xml"
+
+## Test
+#imagesDir = os.path.join(getToolsDir(), progName, "Test")
+#linkDir = os.path.join(getHomeDir(), "Screensaver_test")
+#configDir = os.path.join(getToolsDir(), progName)
+#configName = "config_test.xml"
+
+configN = os.path.join(configDir, configName)
 
 # Minimum parameters for each image to be installed
 minWidth  = 800
 minHeight = 800
-
-## Official
-imagesDir = os.path.join(homeDir, "Images")
-linkDir = os.path.join(homeDir, "Screensaver")
-configDir = os.path.join(homeDir, "Greg", "work", "config", "screensaverLink")
-configName = "config.xml"
-
-## Test
-#imagesDir = os.path.join(homeDir, "Greg", "work", "config", "screensaverLink", "Test")
-#linkDir = os.path.join(homeDir, "Screensaver_test")
-#configDir = os.path.join(homeDir, "Greg", "work", "config", "screensaverLink")
-#configName = "config_test.xml"
-
-configN = os.path.join(configDir, configName)
 
 
 ## Tag Columns
@@ -106,20 +90,11 @@ configN = os.path.join(configDir, configName)
 
 COL_CHILDREN = 4
 
+##############################################
+#              Line Parsing                 ##
+##############################################
 
-###############################################
-
-
-
-###############################################
-###############################################
-##              Line Parsing                 ##
-###############################################
-###############################################
-
-parsedArgs = {}
 parser = OptionParser()
-
 
 parser.add_option(
     "-d",
@@ -139,7 +114,7 @@ parser.add_option(
     help    = "Read the tags and the config, then create the links in batch."
     )
 
-(parsedArgs , args) = parser.parse_args()
+(parsed_args, args) = parser.parse_args()
 
 ###############################################
 
@@ -158,8 +133,7 @@ parser.add_option(
 
 class TagC() :
 
-    def __init__(self, logC) :
-        self.log = logC
+    def __init__(self) :
         self.tagDict = dict() # [tagName] = enable
         self.tagMultiList = list() # [tagname0, enable0], [tagname1, disable1], enable ]
         self.fileDict = dict() # [fileName] = tagList
@@ -224,7 +198,7 @@ class TagC() :
 
     def setSimpleTagEn(self, tagN, tagEn) :
         self.tagDict[tagN.decode('utf-8')] = tagEn
-        #self.log.dbg("Out setSimpleTagEn tagDict="+str(self.tagDict))
+        #logger.debug("Out setSimpleTagEn tagDict="+str(self.tagDict))
 
 
     def getFiles(self) :
@@ -240,14 +214,14 @@ class TagC() :
 
 
     def addSimpleTag(self, tagN, tagEn) :
-        self.log.dbg("In  addSimpleTag tagN="+str(tagN)+" tagEn="+str(tagEn))
+        logger.debug("In  addSimpleTag tagN="+str(tagN)+" tagEn="+str(tagEn))
         tagEn = self.convertStrToBool(tagEn)
         self.setSimpleTagEn(tagN, tagEn)
-        self.log.dbg("Out addSimpleTag tagDict="+str(self.tagDict))
+        logger.debug("Out addSimpleTag tagDict="+str(self.tagDict))
 
 
     def isAlreadyInMultiTag(self, tagMulti) :
-        self.log.dbg("In  isAlreadyInMultiTag tagMulti="+str(tagMulti))
+        logger.debug("In  isAlreadyInMultiTag tagMulti="+str(tagMulti))
         found = False
 
         # Sort it
@@ -255,65 +229,65 @@ class TagC() :
         
         # Find
         for tagsEnM in self.tagMultiList :
-            #self.log.dbg("In  isAlreadyInMultiTag tagsEnM="+str(tagsEnM))
+            #logger.debug("In  isAlreadyInMultiTag tagsEnM="+str(tagsEnM))
             i = 0
             tagsM = tagsEnM[0]
-            #self.log.dbg("In  isAlreadyInMultiTag tagsM="+str(tagsM))
+            #logger.debug("In  isAlreadyInMultiTag tagsM="+str(tagsM))
             if tagsM.__len__() == tagMulti.__len__() :
-                #self.log.dbg("In  isAlreadyInMultiTag same length tagsM="+str(tagsM))
+                #logger.debug("In  isAlreadyInMultiTag same length tagsM="+str(tagsM))
                 for tagM in tagsM :
-                    #self.log.dbg("In  isAlreadyInMultiTag tagM="+str(tagM))
+                    #logger.debug("In  isAlreadyInMultiTag tagM="+str(tagM))
                     if tagM[0] == tagMulti[i][0] :
                         i += 1
-                        #self.log.dbg("In  isAlreadyInMultiTag i="+str(i))
+                        #logger.debug("In  isAlreadyInMultiTag i="+str(i))
                     else :
                         i = 0
-                        #self.log.dbg("In  isAlreadyInMultiTag i="+str(i))
+                        #logger.debug("In  isAlreadyInMultiTag i="+str(i))
                         break
 
-            #self.log.dbg("In  isAlreadyInMultiTag i="+str(i))
+            #logger.debug("In  isAlreadyInMultiTag i="+str(i))
             if (i == tagMulti.__len__()) :
                 found = True
                 break
 
-        self.log.dbg("Out isAlreadyInMultiTag found=" + str(found))
+        logger.debug("Out isAlreadyInMultiTag found=" + str(found))
         return found
 
 
     # With a tag name (included with + and -), 
     # it will return the element or None
     def findElt(self, tagName) :
-        #self.log.dbg("In  findElt tagMultiList=" + str(self.tagMultiList))
+        #logger.debug("In  findElt tagMultiList=" + str(self.tagMultiList))
         foundElt = None
         for tagsEnM in self.tagMultiList :
-            #self.log.dbg("In  findElt tagsEnM=" + str(tagsEnM))
+            #logger.debug("In  findElt tagsEnM=" + str(tagsEnM))
             newTagN = tagName
             for tagM in tagsEnM[0] :
-                #self.log.dbg("In  findElt tagM=" + str(tagM))
-                #self.log.dbg("In  findElt tagM[0]=" + str(tagM[0]))
-                #self.log.dbg("In  findElt newTagN=" + str(newTagN))
+                #logger.debug("In  findElt tagM=" + str(tagM))
+                #logger.debug("In  findElt tagM[0]=" + str(tagM[0]))
+                #logger.debug("In  findElt newTagN=" + str(newTagN))
                 if re.search(tagM[0], newTagN) :
-                    #self.log.dbg("In  findElt 1 newTagN=" + str(newTagN))
+                    #logger.debug("In  findElt 1 newTagN=" + str(newTagN))
                     newTagN = re.sub(tagM[0], "", newTagN)
-                    #self.log.dbg("In  findElt 2 newTagN=" + str(newTagN))
+                    #logger.debug("In  findElt 2 newTagN=" + str(newTagN))
                 else :
                     break
-            #self.log.dbg("In  findElt 3 newTagN=" + str(newTagN))
+            #logger.debug("In  findElt 3 newTagN=" + str(newTagN))
 
             newTagN = re.sub("\+|\-| ", "", newTagN)
             if newTagN == "" :
-                #self.log.dbg("In  findElt tagsEnM=" + str(tagsEnM))
+                #logger.debug("In  findElt tagsEnM=" + str(tagsEnM))
                 foundElt = tagsEnM
                 break
         
-        self.log.dbg("In  findElt tagsEnM=" + str(tagsEnM))
+        logger.debug("In  findElt tagsEnM=" + str(tagsEnM))
         return foundElt
 
 
     # With a tag name (included with + and -), 
     # it will set enable/disable value
     def setEnOnMulti(self, tagName, tagEn) :
-        self.log.dbg("In  setEnOnMulti tagName=" + str(tagName) + ", tagEn=" + str(tagEn))
+        logger.debug("In  setEnOnMulti tagName=" + str(tagName) + ", tagEn=" + str(tagEn))
         foundElt = self.findElt(tagName)
         if foundElt is not None :
             self.tagMultiList.remove(foundElt)
@@ -321,27 +295,27 @@ class TagC() :
 
 
     def addMultiTag(self, tagL, tagEn) :
-        self.log.dbg("In  addMultiTag tagL="+str(tagL)+", tagEn="+str(tagEn))
+        logger.debug("In  addMultiTag tagL="+str(tagL)+", tagEn="+str(tagEn))
         # be sure tagEn is a boolean
         tagEn = self.convertStrToBool(tagEn)
 
         # Decode name
         newTagL = list()
         for tag in tagL :
-            #self.log.dbg("In  addMultiTag tag="+str(tag))
+            #logger.debug("In  addMultiTag tag="+str(tag))
             tag[1] = self.convertStrToBool(tag[1])
             newTagL.append([tag[0].decode('utf-8'), tag[1]])
-        #self.log.dbg("In  addMultiTag newTagL="+str(newTagL))
+        #logger.debug("In  addMultiTag newTagL="+str(newTagL))
 
         # Already exists ?
         if not self.isAlreadyInMultiTag(newTagL) :
-            #self.log.dbg("In  addMultiTag tagEn="+str(tagEn))
+            #logger.debug("In  addMultiTag tagEn="+str(tagEn))
             self.tagMultiList.append([newTagL, tagEn])
             self.tagMultiList.sort()
 
 
     def addFileAndTags(self, fileN, tagN) :
-        self.log.dbg("In  addFileAndTags fileN="+str(fileN)+ " tagN="+str(tagN))
+        logger.debug("In  addFileAndTags fileN="+str(fileN)+ " tagN="+str(tagN))
         fileNDec = fileN.decode('utf-8')
         tagNDec = tagN.decode('utf-8')
         if not self.fileDict.has_key(fileNDec) :
@@ -361,18 +335,18 @@ class TagC() :
             (lvl1, lvl2) = re.split("/", tagN)
             tagEn = self.getSimpleTagEn(tagN)
             if not resDict.has_key(lvl1) :
-                #self.log.dbg("In  getSimpleTagsByHier add lvl1="+str(lvl1)+" lvl2="+str(lvl2)+" tagEn="+str(tagEn))
+                #logger.debug("In  getSimpleTagsByHier add lvl1="+str(lvl1)+" lvl2="+str(lvl2)+" tagEn="+str(tagEn))
                 l = list()
                 l.append([lvl2, tagEn])
                 resDict[lvl1] = [[lvl2, tagEn]]
-                #self.log.dbg("In  getSimpleTagsByHier resDict="+str(resDict))
+                #logger.debug("In  getSimpleTagsByHier resDict="+str(resDict))
             else :
                 tagsList = resDict[lvl1]
                 find = False
 
-                #self.log.dbg("In  getSimpleTagsByHier tagsList="+str(tagsList))
+                #logger.debug("In  getSimpleTagsByHier tagsList="+str(tagsList))
                 for tagLvl2 in tagsList :
-                    #self.log.dbg("In  getSimpleTagsByHier tagLvl2="+str(tagLvl2))
+                    #logger.debug("In  getSimpleTagsByHier tagLvl2="+str(tagLvl2))
                     if tagLvl2[0] == lvl2 :
                         find = True
                         break
@@ -380,16 +354,16 @@ class TagC() :
                 if not find :
                     tagsList.append([lvl2, tagEn])
 
-        self.log.dbg("In  getSimpleTagsByHier res="+str(resDict))
+        logger.debug("In  getSimpleTagsByHier res="+str(resDict))
         return resDict
 
 
     ## read tools configuration file
     def readConfig(self) :
-        self.log.info(HEADER, "In  readConfig " + configN)
+        logger.info("In  readConfig " + configN)
 
         if not os.path.isfile(configN) :
-            self.log.info(HEADER, "In  readConfig config file doesn't exist.")
+            logger.info("In  readConfig config file doesn't exist.")
             self.writeConfig()
 
         else :
@@ -449,24 +423,24 @@ class TagC() :
                     tagName = tagTree.text
                     self.addFileAndTags(fileName, tagName)
 
-        self.log.info(HEADER, "Out readConfig")
+        logger.info("Out readConfig")
 
 
     ## write tools configuration file
     def writeConfig(self) :
-        self.log.info(HEADER, "In  writeConfig " + configN)
+        logger.info("In  writeConfig " + configN)
         
         tagsAndFilesTree = etree.Element("TagsFiles")
         tagsAndFilesTree.addprevious(etree.Comment("!!! Don't modify this file !!!"))
-        tagsAndFilesTree.addprevious(etree.Comment("Managed by " + HEADER))
+        tagsAndFilesTree.addprevious(etree.Comment("Managed by " + progName))
 
         # Simple Tags part
         simpleTagsTree = etree.SubElement(tagsAndFilesTree, "simpleTags")
         tagsN = self.getSimpleTags()
-        #self.log.dbg("In  writeConfig tagsN="+str(tagsN))
+        #logger.debug("In  writeConfig tagsN="+str(tagsN))
         for tagN in tagsN :
             # Create the element tree
-            #self.log.dbg("In  writeConfig tagN="+str(tagN)+" enable="+str(self.getSimpleTagEn(tagN)))
+            #logger.debug("In  writeConfig tagN="+str(tagN)+" enable="+str(self.getSimpleTagEn(tagN)))
             tagTree = etree.SubElement(simpleTagsTree, "simpleTag")
             tagTree.set("name", tagN)
             tagTree.set("enable", str(self.getSimpleTagEn(tagN)))
@@ -474,12 +448,12 @@ class TagC() :
         # Multiple Tags part
         multiTagsTree = etree.SubElement(tagsAndFilesTree, "multiTagsTree")
         for tagsEnM in self.tagMultiList :
-            #self.log.dbg("In  writeConfig multiTag="+str(tagsEnM[0])+" enable="+str(tagsEnM[1]))
+            #logger.debug("In  writeConfig multiTag="+str(tagsEnM[0])+" enable="+str(tagsEnM[1]))
             # Create the element tree
             multiTagsT = etree.SubElement(multiTagsTree, "multiTags")
             multiTagsT.set("enable", str(tagsEnM[1]))
             for tagM in tagsEnM[0] :
-                #self.log.dbg("In  writeConfig tagN="+str(tagM[0])+" enable="+str(tagM[1]))
+                #logger.debug("In  writeConfig tagN="+str(tagM[0])+" enable="+str(tagM[1]))
                 multiTagT = etree.SubElement(multiTagsT, "multiTag")
                 multiTagT.set("name", tagM[0])
                 multiTagT.set("enable", str(tagM[1]))
@@ -489,7 +463,7 @@ class TagC() :
         filesN = self.getFiles()
         for fileN in filesN :
             # Create the element tree
-            #self.log.dbg("In  writeConfig fileN="+str(fileN)+" tagsList="+str(self.getFileTagsL(fileN)))
+            #logger.debug("In  writeConfig fileN="+str(fileN)+" tagsList="+str(self.getFileTagsL(fileN)))
             tagsFTree = etree.SubElement(filesTree, "file")
             tagsFTree.set("name", fileN)
             for tag in self.getFileTagsL(fileN) :
@@ -499,23 +473,23 @@ class TagC() :
         doc = etree.ElementTree(tagsAndFilesTree)
         doc.write(configN, encoding='utf-8', method="xml", pretty_print=True, xml_declaration=True) 
             
-        self.log.info(HEADER, "Out writeConfig " + configN)
+        logger.info("Out writeConfig " + configN)
 
 
     def readTag(self, fileN) :
-        self.log.info(HEADER, "In  readTag file=" + str(fileN))
+        logger.info("In  readTag file=" + str(fileN))
         im = Image.open(fileN)
         attr = True
         try :
             imL = im.applist
         except :
-            self.log.warn(HEADER, "In  readTag file="+str(fileN)+" has no tags")
+            logger.warning("In  readTag file="+str(fileN)+" has no tags")
             attr = False
         
         good = True
         (width, height) = im.size
         if (width < minWidth) or (height < minHeight) :
-            self.log.warn(HEADER, "In  readTag size of file="+str(fileN)+" is too small (width = " + str(width) + ", height = " + str(height)+ ").")
+            logger.warning("In  readTag size of file="+str(fileN)+" is too small (width = " + str(width) + ", height = " + str(height)+ ").")
             good = False
 
         if attr and good :
@@ -539,12 +513,14 @@ class TagC() :
                                                 if not self.tagDict.has_key(tagN) :
                                                     self.addSimpleTag(tagN, "True")
                                                 self.addFileAndTags(fileN, tagN)
-                except ValueError as err :
-                    self.log.warn(HEADER, "In  readTag fileN"+str(fileN)+"\n  error="+str(err))
+                except ValueError as errValueError :
+                    logger.warning("In  readTag ValueError fileN"+str(fileN)+"\n  error="+str(errValueError))
+                except ET.ParseError as errParseError :
+                    logger.warning("In  readTag ParseError fileN"+str(fileN)+"\n  error="+str(errParseError))
 
 
     def scanTags(self) :
-        self.log.info(HEADER, "In  scanTags")
+        logger.info("In  scanTags")
 
         # Keep simple tag config backup
         oldTagDict = copy.deepcopy(self.tagDict)
@@ -556,7 +532,7 @@ class TagC() :
         # For all images
         if os.path.isdir(imagesDir) :
             for dirpath, dirnames, filenames in os.walk(imagesDir) :  # @UnusedVariable
-                self.log.dbg("In  scanTags dirpath="+str(dirpath)+" dirnames="+str(dirnames)+" filenames="+str(filenames))
+                logger.debug("In  scanTags dirpath="+str(dirpath)+" dirnames="+str(dirnames)+" filenames="+str(filenames))
                 if ( not(re.search(".dtrash", dirpath)) and (filenames.__len__ != 0) ) :
                     for filename in filenames :
                         extAuth=[".jpg", ".JPG", ".jpeg", ".JPEG", ".tif", ".TIF", ".gif", ".GIF", ".bmp", ".BMP"]
@@ -585,36 +561,36 @@ class TagC() :
         #    if removeIt :
         #        self.tagMultiList.remove(tagsEnM)
 
-        self.log.info(HEADER, "Out scanTags")
+        logger.info("Out scanTags")
 
 
     def copyTags(self, tagsToCopy) :
-        self.log.info(HEADER, "In  copyTags tagsToCopy=" + str(tagsToCopy))
+        logger.info("In  copyTags tagsToCopy=" + str(tagsToCopy))
         
         # Create link
         tagMulti = list()
         for sel in tagsToCopy :
             tagMulti.append([sel[0] + "/" + sel[1], sel[2]])
-        self.log.dbg("In  copyTags tagMulti="+str(tagMulti))
+        logger.debug("In  copyTags tagMulti="+str(tagMulti))
 
         # Add it
         self.addMultiTag(tagMulti, True)
 
-        self.log.info(HEADER, "Out copyTags")
+        logger.info("Out copyTags")
 
 
     # With a tag name (included with + and -), 
     def delTags(self, tagsToDelete) :
-        self.log.info(HEADER, "In  delTags tagsToDelete=" + str(tagsToDelete))
+        logger.info("In  delTags tagsToDelete=" + str(tagsToDelete))
         for sel in tagsToDelete :
             foundElt = self.findElt(sel[0])
             if foundElt is not None :
                 self.tagMultiList.remove(foundElt)
-        self.log.info(HEADER, "Out delTags")
+        logger.info("Out delTags")
 
 
     def createLinks(self) :
-        self.log.info(HEADER, "In  createLinks")
+        logger.info("In  createLinks")
         # delete link directory
         if os.path.isdir(linkDir) :
             shutil.rmtree(linkDir)
@@ -622,56 +598,56 @@ class TagC() :
 
         i=0
         for fileN in self.getFiles() :
-            self.log.dbg("In  createLinks fileN="+str(fileN))
+            logger.debug("In  createLinks fileN="+str(fileN))
             tagsList = self.getFileTagsL(fileN)
-            self.log.dbg("In  createLinks tagsList="+str(tagsList))
+            logger.debug("In  createLinks tagsList="+str(tagsList))
 
             # filter with simple tags
             installSimple = False
             for tagN in tagsList :
                 if self.tagDict.has_key(tagN) :
-                    self.log.dbg("In  createLinks tagN="+str(tagN)+"  en="+str(self.tagDict[tagN]))
+                    logger.debug("In  createLinks tagN="+str(tagN)+"  en="+str(self.tagDict[tagN]))
                     if self.tagDict[tagN] :
-                        self.log.dbg("In  createLinks installSimple tagN="+str(tagN)+"  en="+str(self.tagDict[tagN]))
+                        logger.debug("In  createLinks installSimple tagN="+str(tagN)+"  en="+str(self.tagDict[tagN]))
                         installSimple = True
                     else :
                         installSimple = False
                         break
                 else :
-                    self.log.dbg("In  createLinks tagN="+str(tagN)+" doesn't exist in tagDict")
+                    logger.debug("In  createLinks tagN="+str(tagN)+" doesn't exist in tagDict")
 
             # filter with multiple tags
             matchFound = False
             installMulti = None
-            self.log.dbg("In  createLinks tagMultiList="+str(self.tagMultiList))
+            logger.debug("In  createLinks tagMultiList="+str(self.tagMultiList))
             for tagsEnM in self.tagMultiList :
                 matchFoundOnce = False
-                self.log.dbg("In  createLinks tagsEnM="+str(tagsEnM))
+                logger.debug("In  createLinks tagsEnM="+str(tagsEnM))
                 if tagsEnM[1] :
                     for tagM in tagsEnM[0] :
-                        self.log.dbg("In  createLinks tagM="+str(tagM))
+                        logger.debug("In  createLinks tagM="+str(tagM))
                         # for enable, each tag must be present
                         if tagsList.__contains__(tagM[0]) :
-                            self.log.dbg("In  createLinks 1")
+                            logger.debug("In  createLinks 1")
                             matchFoundOnce = True
                             if tagM[1] :
-                                self.log.dbg("In  createLinks 2")
+                                logger.debug("In  createLinks 2")
                                 if installMulti is None :
                                     installMulti = True
                             else :
-                                self.log.dbg("In  createLinks 3")
+                                logger.debug("In  createLinks 3")
                                 installMulti = False
                         else :
-                            self.log.dbg("In  createLinks 4")
+                            logger.debug("In  createLinks 4")
                             matchFoundOnce = False
                             break
 
                 if matchFoundOnce :
                     matchFound = True
 
-            self.log.dbg("In  createLinks matchFound="+str(matchFound))
-            self.log.dbg("In  createLinks installMulti="+str(installMulti))
-            self.log.dbg("In  createLinks installSimple="+str(installSimple))
+            logger.debug("In  createLinks matchFound="+str(matchFound))
+            logger.debug("In  createLinks installMulti="+str(installMulti))
+            logger.debug("In  createLinks installSimple="+str(installSimple))
 
             # installation priority
             install = False
@@ -682,22 +658,22 @@ class TagC() :
                 install = True
 
             # installation
-            self.log.dbg("In  createLinks install="+str(install))
+            logger.debug("In  createLinks install="+str(install))
             if install :
                 curDir = os.getcwd()
                 os.chdir(linkDir)
 
                 # create link name
-                linkN = re.sub(homeDir, "", fileN)
+                linkN = re.sub(getHomeDir(), "", fileN)
                 linkN = re.sub("/", "_", linkN)
                 linkN = re.sub("^_", "", linkN)
                 os.symlink(fileN, linkN)
-                self.log.info(HEADER, "In  createLinks file="+str(fileN)+", link="+str(linkN))
+                logger.info("In  createLinks file="+str(fileN)+", link="+str(linkN))
                 i += 1
         
                 os.chdir(curDir)
 
-        self.log.info(HEADER, "Out createLinks " + str(i) + " images ont été ajoutés.")
+        logger.info("Out createLinks " + str(i) + " images ont été ajoutés.")
         return i
 
 ###############################################
@@ -716,14 +692,13 @@ class TagC() :
 
 class GuiC(gtk.Window) :
 
-    def __init__(self, logC) :
-        self.log = logC
-        self.simpleGuiC = TagGuiC(self, False, self.log)
-        self.multiGuiC = TagGuiC(self, True, self.log)
+    def __init__(self) :
+        self.simpleGuiC = TagGuiC(self, False)
+        self.multiGuiC = TagGuiC(self, True)
 
 
     def run(self):
-        self.log.info(HEADER, "In  run")
+        logger.info("In  run")
 
         # create the main window
         self.createWin()
@@ -731,7 +706,7 @@ class GuiC(gtk.Window) :
         # display it
         gtk.main()
 
-        self.log.info(HEADER, "Out run")
+        logger.info("Out run")
 
 
     def on_destroy(self, widget):
@@ -739,7 +714,7 @@ class GuiC(gtk.Window) :
         
 
     def createWin(self):
-        self.log.info(HEADER, "In  createWin")
+        logger.info("In  createWin")
 
         #
         # Main window
@@ -749,7 +724,7 @@ class GuiC(gtk.Window) :
         try :
             self.set_icon_from_file(progIcon)
         except gobject.GError as err :
-            self.log.warn(HEADER, "In  createWin progIcon="+str(progIcon)+"\n  error="+str(err))
+            logger.warning("In  createWin progIcon="+str(progIcon)+"\n  error="+str(err))
         self.connect("destroy", self.on_destroy)
 
         self.set_title("Screensaver Images Tags")
@@ -855,7 +830,7 @@ class GuiC(gtk.Window) :
         # Display the window
         self.show_all()
 
-        self.log.info(HEADER, "Out createWin")
+        logger.info("Out createWin")
 
 
     def onCopy(self, button=None) :
@@ -887,13 +862,12 @@ class GuiC(gtk.Window) :
 
 class TagGuiC(gtk.Window) :
 
-    def __init__(self, parentW, multi, logC) :
+    def __init__(self, parentW, multi) :
         # window parameter
         self.mainWindow = parentW
         self.treeview = None
 
-        self.log = logC
-        self.tagC = TagC(self.log)
+        self.tagC = TagC()
         self.model = self.initModel()
         self.multi = multi  # false = tag list left (single)
                             # true  = tag list right (multiple)
@@ -905,7 +879,7 @@ class TagGuiC(gtk.Window) :
 
         if not self.multi :
             self.tagC.readConfig()
-            self.log.info(HEADER, "TagC = \n" + str(self.tagC))
+            logger.info("TagC = \n" + str(self.tagC))
 
 
     def initModel(self) :
@@ -918,7 +892,7 @@ class TagGuiC(gtk.Window) :
 
 
     def createTagTv(self) :
-        self.log.dbg("In  createTagTv")
+        logger.debug("In  createTagTv")
 
         # create model
         self.createModel()
@@ -933,7 +907,7 @@ class TagGuiC(gtk.Window) :
         treeselect.set_mode(gtk.SELECTION_MULTIPLE)
         treeselect.connect('changed', self.onChanged)
 
-        self.log.dbg("Out createTagTv")
+        logger.debug("Out createTagTv")
         return self.treeview
 
 
@@ -951,7 +925,7 @@ class TagGuiC(gtk.Window) :
 
 
     def createModel(self) :
-        self.log.info(HEADER, "In  createModel multi=" + str(self.multi))
+        logger.info("In  createModel multi=" + str(self.multi))
         topLvl = list()
         self.model.clear()
 
@@ -982,12 +956,12 @@ class TagGuiC(gtk.Window) :
             tagsDictSort = tagsDict.keys()
             tagsDictSort.sort()
             for tag in tagsDictSort :
-                #self.log.dbg("In  createModel lvl1="+str(tag))
+                #logger.debug("In  createModel lvl1="+str(tag))
 
                 ## Level 2
                 lvl2L = list()
                 for lvl2 in tagsDict[tag] :
-                    #self.log.dbg("In  createModel lvl2="+str(lvl2))
+                    #logger.debug("In  createModel lvl2="+str(lvl2))
                     lvl2info = list()
 
                     # name
@@ -998,7 +972,7 @@ class TagGuiC(gtk.Window) :
                     lvl2info.append(True)
                     # activatable
                     lvl2info.append(True)
-                    #self.log.dbg("In  createModel lvl2info="+str(lvl2info))
+                    #logger.debug("In  createModel lvl2info="+str(lvl2info))
 
                     lvl2L.append(lvl2info)
 
@@ -1012,7 +986,7 @@ class TagGuiC(gtk.Window) :
                 lvl1L.append(False)
                 # activatable
                 lvl1L.append(False)
-                #self.log.dbg("In  createModel lvl1L="+str(lvl1L))
+                #logger.debug("In  createModel lvl1L="+str(lvl1L))
 
                 # Add level 2
                 lvl1L.append(lvl2L)
@@ -1021,7 +995,7 @@ class TagGuiC(gtk.Window) :
 
 
         ## Add data to the tree store
-        self.log.dbg("In  createModel topLvl="+str(topLvl))
+        logger.debug("In  createModel topLvl="+str(topLvl))
         if topLvl :
             for tag in topLvl :
                 tagIter = self.model.append(None)
@@ -1046,11 +1020,11 @@ class TagGuiC(gtk.Window) :
         if self.treeview is not None :
             self.treeview.expand_all()
 
-        self.log.info(HEADER, "Out createModel")
+        logger.info("Out createModel")
 
 
     def addCol(self, treeview) :
-        self.log.dbg("In  addCol")
+        logger.debug("In  addCol")
         model = treeview.get_model()
 
         # Column for tag's enable
@@ -1073,14 +1047,14 @@ class TagGuiC(gtk.Window) :
         column.set_clickable(False)
 
         treeview.append_column(column)
-        self.log.dbg("Out addCol")
+        logger.debug("Out addCol")
         return treeview
 
 
     # When the user clicks on the column "enable"
     def onColEnable(self, cell, model) :
         if self.multi :
-            self.log.info(HEADER, "In  onColEnable memColEnMulti=" + str(self.memColEnMulti))
+            logger.info("In  onColEnable memColEnMulti=" + str(self.memColEnMulti))
 
             if self.memColEnMulti == "all" :
                 self.memColEnMulti = "none"
@@ -1100,7 +1074,7 @@ class TagGuiC(gtk.Window) :
                         self.tagC.setEnOnMulti(tagsName, False)
 
         else :
-            self.log.info(HEADER, "In  onColEnable memColEn=" + str(self.memColEn))
+            logger.info("In  onColEnable memColEn=" + str(self.memColEn))
 
             if self.memColEn == "all" :
                 self.memColEn = "none"
@@ -1121,12 +1095,12 @@ class TagGuiC(gtk.Window) :
         # update model
         self.createModel()
 
-        self.log.info(HEADER, "Out onColEnable")
+        logger.info("Out onColEnable")
 
 
     # each time selection changes, this function is called
     def onChanged(self, selection) :
-        self.log.info(HEADER, "In  onChanged")
+        logger.info("In  onChanged")
         model, rows = selection.get_selected_rows()
 
         self.selMulti = list()
@@ -1162,12 +1136,12 @@ class TagGuiC(gtk.Window) :
                 else :
                     self.mainWindow.copyBut.set_sensitive(False)
 
-        self.log.info(HEADER, "Out onChanged selMulti=" + str(self.selMulti))
+        logger.info("Out onChanged selMulti=" + str(self.selMulti))
 
 
     # When user clicks on a box
     def onToggledItem(self, cell, path_str, model) :
-        self.log.info(HEADER, "In  onToggledItem")
+        logger.info("In  onToggledItem")
 
         iterSel = model.get_iter_from_string(path_str)
         
@@ -1177,8 +1151,8 @@ class TagGuiC(gtk.Window) :
             # Get enable (before click)
             selEnable = model.get_value(iterSel, COL_ENABLE)
 
-            self.log.dbg("selName=" + str(selName))
-            self.log.dbg("selEnable=" + str(selEnable))
+            logger.debug("selName=" + str(selName))
+            logger.debug("selEnable=" + str(selEnable))
 
             # Disable
             # From True to False (as value is before clicking)
@@ -1203,9 +1177,9 @@ class TagGuiC(gtk.Window) :
             # Set tag name
             selTagN = selLvl1 + "/" + selLvl2
 
-            self.log.dbg("selLvl1=" + str(selLvl1))
-            self.log.dbg("selLvl2=" + str(selLvl2))
-            self.log.dbg("selEnable=" + str(selEnable))
+            logger.debug("selLvl1=" + str(selLvl1))
+            logger.debug("selLvl2=" + str(selLvl2))
+            logger.debug("selEnable=" + str(selEnable))
 
             # Disable
             # From True to False (as value is before clicking)
@@ -1219,7 +1193,7 @@ class TagGuiC(gtk.Window) :
                 self.tagC.setSimpleTagEn(selTagN.decode('utf-8'), True)
                 model.set(iterSel, COL_ENABLE, True)
 
-        self.log.info(HEADER, "Out onToggledItem")
+        logger.info("Out onToggledItem")
 
 
     # Create multiple tags
@@ -1264,22 +1238,19 @@ class TagGuiC(gtk.Window) :
 
 
 def main() :
-    ## Create log class
-    global log
-    log = LOGC(logFile, HEADER, parsedArgs.debug)
-
     ## Graphic interface
-    if parsedArgs.create :
-        tagC = TagC(log)
+    if parsed_args.create :
+        tagC = TagC()
         tagC.scanTags()
         tagC.readConfig()
         nb = tagC.createLinks()
     else :
-        gui = GuiC(log)
+        gui = GuiC()
         gui.run()
 
 
 if __name__ == '__main__':
+    logger = createLog(progName, parsed_args)
     main()
 
 ###############################################
