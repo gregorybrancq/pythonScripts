@@ -20,6 +20,7 @@ from network import checkAddress, getIp
 ##############################################
 
 ipName = dict()
+ipName["192.168.1.100"] = "nas"
 ipName["192.168.1.101"] = "server"
 ipName["192.168.1.102"] = "server_wifi"
 ipName["10.42.0.1"] = "server_shared_internet"
@@ -37,7 +38,7 @@ extDisk = "/media/greg/Transcend_600Go"
 ##############################################
 
 def runSync(local_config, remote_config):
-    name = local_config + "-to-" + remote_config + "-mode_sata.prf"
+    name = local_config + "-to-" + remote_config + ".prf"
     print("Run sync " + name)
     unison_file = os.path.join(os.getenv("HOME"), ".unison", name)
     if os.path.isfile(unison_file):
@@ -58,10 +59,11 @@ def main():
     print("Local config = %s" % str(local_config))
     # Remove _wifi to the name
     local_config = re.sub("_wifi", "", local_config)
-    print("Local config after sub _wifi = %s" % str(local_config))
+    print("Local config after remove _wifi = %s" % str(local_config))
 
     if re.search("portable", local_config):
-        remote_target = "server"
+        #remote_target = "server"
+        remote_target = "nas"
     elif re.search("server", local_config):
         remote_target = "portable"
         # Check if external disk is connected
