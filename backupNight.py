@@ -32,8 +32,8 @@ wakeUpHour = 3
 
 # configuration files
 configFile = os.path.join(getToolsDir(), progName, progName + ".cfg")
-rsnapshotHome = os.path.join(getToolsDir(), progName, "rsnapshot_home.conf")
-rsnapshotVps = os.path.join(getToolsDir(), progName, "rsnapshot_vps.conf")
+rsnapshotHome = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_home.conf")
+rsnapshotVps = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_vps.conf")
 
 ##############################################
 #              Line Parsing                 ##
