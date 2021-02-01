@@ -28,12 +28,13 @@ userMail = "gregory.brancq@free.fr"
 launchedIt = False
 
 # when the computer will wake up
-wakeUpHour = 3
+wakeUpHour = 9
 
 # configuration files
 configFile = os.path.join(getToolsDir(), progName, progName + ".cfg")
-rsnapshotHome = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_home.conf")
-rsnapshotVps = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_vps.conf")
+rsnapshotFocus = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_focus.conf")
+rsyncFocus = os.path.join(getToolsDir(), "grsync", "videos.filter")
+rsnapshotQuantum = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_quantum.conf")
 
 ##############################################
 #              Line Parsing                 ##
@@ -106,10 +107,12 @@ class Backups:
         return res
 
     def add_backup_config(self):
-        self.cfgs["home"] = Backup(name="Home", periods=["yearly", "monthly", "weekly", "daily"],
-                                   cfg_file=rsnapshotHome)
-        self.cfgs["vps"] = Backup(name="Vps", periods=["yearly", "monthly", "weekly", "daily"],
-                                  cfg_file=rsnapshotVps)
+        self.cfgs["focus_data"] = Backup(name="Focus_data", periods=["yearly", "monthly"],
+                                   tool="rsnapshot", cfg_file=rsnapshotFocus)
+        self.cfgs["focus_video"] = Backup(name="Focus_video", periods=["yearly", "monthly"],
+                                   tool="rsync", cfg_file=rsyncFocus)
+        self.cfgs["quantum"] = Backup(name="Quantum", periods=["yearly", "monthly", "weekly", "daily"],
+                                   tool="rsnapshot", cfg_file=rsnapshotQuantum)
 
     def run(self):
         for cfg in self.cfgs.keys():
@@ -117,14 +120,16 @@ class Backups:
 
 
 class Backup:
-    def __init__(self, name, periods, cfg_file):
+    def __init__(self, name, periods, tool, cfg_file):
         self.name = name
         self.periods = periods
+        self.tool = tool
         self.cfg = cfg_file
         self.cmd = str()
 
     def __str__(self):
         res = str()
+        res += "  tool        = " + self.tool + "\n"
         res += "  config file = " + self.cfg + "\n"
         res += "  periods     = " + str(self.periods) + "\n"
         return res
@@ -135,7 +140,14 @@ class Backup:
             logger.debug("In  Backup %s, run period=%s" % (self.name, str(period)))
             period_class = Period(period)
             if period_class.canBeLaunch():
-                cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
+                if self.tool == "rsnapshot" :
+                    cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
+                elif self. tool == "rsync" :
+                    cmd = ["/usr/bin/rsync", "-r", "-n", "-t", "-p", "-o", "-g", "-v",
+                            "--progress", "--delete", "-l", "-b", "--delete-excluded",
+                            "--delete-before", "--ignore-errors", "--filter=. " + self.cfg,
+                            "/home/greg/Vidéos/", "/media/backup/video"]
+
                 if parsed_args.dry_run:
                     logger.info("In  Backup run %s cmd=%s" % (str(period), str(cmd)))
                 else:
@@ -151,7 +163,7 @@ class Backup:
                     message_string = message_bytes.decode()
                     logger.debug("In  Backup returnCode=%s, msg=%s, err=%s" % (
                         str(process_backup.returncode), str(msg), str(err)))
-                    if process_backup.returncode == 0:
+                    if self.tool == "rsnapshot" and process_backup.returncode == 0:
                         if period == "daily":
                             process_report = subprocess.Popen(["/usr/local/bin/rsnapreport.pl"],
                                                               stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -239,10 +251,15 @@ def programNextWakeUp():
     # echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
     # to check
     # grep 'al\|time' < /proc/driver/rtc
-    # this is utc time, so minus 1 during winter, and minus 2 during summer
-    cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date "Tomorrow ' + str(wakeUpHour - 2) \
-          + ':01:00" +%s  > /sys/class/rtc/rtc0/wakealarm '
+    # this is utc time, 
+    # so to avoid to precise minus 1 during winter, and minus 2 during summer
+    # specify timezone
+    cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date=' + "'" + \
+            'TZ="Europe/Paris" Tomorrow ' + str(wakeUpHour) + \
+            ':01:00' + "' +%s > /sys/class/rtc/rtc0/wakealarm"
+    logger.debug("In  programNextWakeUp cmd=" + str(cmd))
     os.system(cmd)
+    logger.info("Out programNextWakeUp")
 
 
 def screenOn():
@@ -289,11 +306,11 @@ def main():
                 if program.isEnable():
                     logger.debug("In  main isEnable")
                     # shutdown screens to reduce power consuming
-                    screenOff()
+                    #screenOff()
                     # compute backups
                     computeBackups()
                     # power up screens
-                    screenOn()
+                    #screenOn()
                     if not parsed_args.dry_run:
                         # program the next wake up
                         programNextWakeUp()
