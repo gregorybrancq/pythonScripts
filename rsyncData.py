@@ -7,26 +7,25 @@ Rsync firefox and thunderbird data from portable to home computer.
 import os
 import subprocess
 import sys
+import socket
 
 sys.path.append('/home/greg/Config/env/pythonCommon')
 from basic import getToolsDir
 from log_and_parse import createLog, parsingLine
 from program import Program
-from network import checkAddress, getIp
+
+# from network import checkAddress, getIp
 
 ##############################################
 # Global variables
 ##############################################
 
 progName = 'rsyncData'
-
-# data
-data = "/media/perso/data/"
-remote = "greg@home:"
+data_dir = "/media/perso/data/"
 
 # flag
 error = False
-pc = None
+pc_name = None
 
 
 ##############################################
@@ -41,12 +40,10 @@ def rsyncData(param):
 
     # construct command
     cmd = 'rsync -rulpgvz --delete -e '
-    if pc == "Portable":
-        cmd += '"ssh -p 2832" '
     cmd += src + ' ' + dst
 
     logger.info("RsyncData cmd = %s" % str(cmd))
-    if not parsedArgs.dryRun :
+    if not parsedArgs.dryRun:
         proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT, shell=True)
         proc.wait()
         if proc.returncode != 0:
@@ -56,11 +53,9 @@ def rsyncData(param):
 
 def getDirName(tool):
     """ get the directories names of source and target"""
-    tool_source = os.path.join(data, tool, pc, "*")
+    tool_source = os.path.join(data_dir, tool, pc_name, "*")
     tool_target = str()
-    if pc == "Portable":
-        tool_target += remote
-    tool_target += os.path.join(getToolsDir(), tool, pc)
+    tool_target += os.path.join(getToolsDir(), tool, pc_name)
     logger.debug("tool_source = %s, tool_target = %s" % (tool_source, tool_target))
     return tool_source, tool_target
 
@@ -75,21 +70,22 @@ def copyLocalData():
 
 
 def main():
-    global pc
+    global pc_name
     logger.info("START")
 
-    # determine on which pc this program is launched
-    my_ip = getIp()
-    if my_ip == "192.168.1.101":
-        pc = "Home"
-    elif my_ip == "192.168.1.103":
-        pc = "Portable"
-    else:
-        logger.exit("Can't determine the pc.")
-        sys.exit(1)
+    pc_name = socket.gethostname()
+    # determine on which pc_name this program is launched
+    # my_ip = getIp()
+    # if my_ip == "192.168.1.101":
+    #    pc_name = "Home"
+    # elif my_ip == "192.168.1.103":
+    #    pc_name = "Portable"
+    # else:
+    #    logger.exit("Can't determine the pc_name.")
+    #    sys.exit(1)
 
     # config file name
-    config_file = os.path.join(getToolsDir(), progName, progName + "_" + pc + ".cfg")
+    config_file = os.path.join(getToolsDir(), progName, progName + "_" + pc_name + ".cfg")
 
     # program management
     program = Program(prog_name=progName, config_file=config_file)
@@ -98,14 +94,12 @@ def main():
     if not program.isRunning():
         program.startRunning()
         # be sure that it has not been already launched today
-        if not program.isLaunchedToday():
-            # Check if home computer is power on and accessible
-            if checkAddress("192.168.1.101"):
-                # Rsync local data
-                copyLocalData()
-                if not error and not parsedArgs.dryRun:
-                    # Update config file
-                    program.runToday()
+        if not program.isLaunchedLastDays(days=7):
+            # Rsync local data
+            copyLocalData()
+            if not error and not parsedArgs.dryRun:
+                # Update config file
+                program.runToday()
         program.stopRunning()
 
     logger.info("STOP\n")
