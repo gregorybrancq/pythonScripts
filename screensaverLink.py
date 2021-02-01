@@ -63,7 +63,7 @@ progIcon = os.path.join(getToolsDir(), "icons", "screensaverLink.png")
 
 ## Official
 imagesDir = os.path.join(getHomeDir(), "Images")
-linkDir = os.path.join(getHomeDir(), "Screensaver")
+linkDir = os.path.join(getHomeDir(), ".screensaver")
 configDir = os.path.join(getToolsDir(), progName)
 configName = "config.xml"
 
