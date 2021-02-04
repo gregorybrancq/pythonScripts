@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Rsync firefox and thunderbird data from portable to home computer.
+Rsync local data to another disk in order to be backuped.
 """
 import os
+import re
 import subprocess
 import sys
 import socket
@@ -56,6 +57,18 @@ def getDirName(tool):
     tool_source = os.path.join(data_dir, tool, pc_name, "*")
     tool_target = str()
     tool_target += os.path.join(getToolsDir(), tool, pc_name)
+
+    # check if source exists
+    tool_source_wt_star = re.sub("/\*", "", tool_source)
+    #logger.debug("tool_source = %s, tool_source_wt_star = %s" % (tool_source, tool_source_wt_star))
+    if not os.path.isdir(tool_source_wt_star):
+        logger.error("The source doesn't exist : %s" % tool_source_wt_star)
+        sys.exit(1)
+
+    # create destination if necessary
+    if not os.path.isdir(tool_target):
+        os.makedirs(tool_target)
+
     logger.debug("tool_source = %s, tool_target = %s" % (tool_source, tool_target))
     return tool_source, tool_target
 
@@ -81,7 +94,7 @@ def main():
     # elif my_ip == "192.168.1.103":
     #    pc_name = "Portable"
     # else:
-    #    logger.exit("Can't determine the pc_name.")
+    #    logger.error("Can't determine the pc_name.")
     #    sys.exit(1)
 
     # config file name
