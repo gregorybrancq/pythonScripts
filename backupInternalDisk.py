@@ -2,10 +2,15 @@
 # -*- coding: utf-8 -*-
 
 """
-To make backup task in background during the night.
-It computes the different backups configuration, and turn off/on screens to reduce power consumption.
-"""
+To make backup tasks automatically in background.
+It computes the different backups configuration, and can turn off/on screens to reduce power consumption.
 
+The cron command to launch it the first monday of the month at 10:03 :
+3   10  1-7 *   *   [ "$(date '+\%u')" = "1" ] && export DISPLAY=:0.0 && nice +10 /home/greg/Config/env/bin/backupInternalDisk
+and to be sure that computer will wake up, you can add :
+#0   12  *   *   *    export DISPLAY=:0.0 && echo 0 > /sys/class/rtc/rtc0/wakealarm && date --date "First monday month 10:00:00" +\%s  > /sys/class/rtc/rtc0/wakealarm
+"""
+import multiprocessing
 import os
 import smtplib
 import subprocess
@@ -13,17 +18,22 @@ import sys
 from datetime import datetime
 from optparse import OptionParser
 
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+
 sys.path.append('/home/greg/Config/env/pythonCommon')
 from program import Program
 from mail import sendMail
 from basic import getToolsDir
 from log_and_parse import createLog
+from message import MessageDialog
 
 ##############################################
 # Global variables
 ##############################################
 
-progName = "backupNight"
+progName = "backupInternalDisk"
 userMail = "gregory.brancq@free.fr"
 launchedIt = False
 
@@ -34,7 +44,7 @@ wakeUpHour = 10
 configFile = os.path.join(getToolsDir(), progName, progName + ".cfg")
 rsnapshotFocus = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_focus.conf")
 rsyncFocus = os.path.join(getToolsDir(), "grsync", "videos.filter")
-rsnapshotQuantum = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_quantum.conf")
+#rsnapshotQuantum = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_quantum.conf")
 
 ##############################################
 #              Line Parsing                 ##
@@ -111,8 +121,8 @@ class Backups:
                                    tool="rsnapshot", cfg_file=rsnapshotFocus)
         self.cfgs["focus_video"] = Backup(name="Focus_video", periods=["yearly", "monthly"],
                                    tool="rsync", cfg_file=rsyncFocus)
-        self.cfgs["quantum"] = Backup(name="Quantum", periods=["yearly", "monthly", "weekly", "daily"],
-                                   tool="rsnapshot", cfg_file=rsnapshotQuantum)
+        #self.cfgs["quantum"] = Backup(name="Quantum", periods=["yearly", "monthly", "weekly", "daily"],
+        #                           tool="rsnapshot", cfg_file=rsnapshotQuantum)
 
     def run(self):
         for cfg in self.cfgs.keys():
@@ -249,15 +259,19 @@ def programNextWakeUp():
     # echo 0 > /sys/class/rtc/rtc0/wakealarm && date '+%s' -d '+ 1 minutes' > /sys/class/rtc/rtc0/wakealarm
     # to check
     # grep 'al\|time' < /proc/driver/rtc
-    # this is utc time, 
-    # so to avoid to precise minus 1 during winter, and minus 2 during summer
+    # this is utc time, so to avoid to precise minus 1 during winter, and minus 2 during summer
     # specify timezone
     cmd = 'echo 0 > /sys/class/rtc/rtc0/wakealarm && date -u --date=' + "'" + \
-            'TZ="Europe/Paris" Tomorrow ' + str(wakeUpHour) + \
-            ':01:00' + "' +%s > /sys/class/rtc/rtc0/wakealarm"
+            'TZ="Europe/Paris" First monday month ' + str(wakeUpHour) + \
+            ':00:00' + "' +%s > /sys/class/rtc/rtc0/wakealarm"
     logger.debug("In  programNextWakeUp cmd=" + str(cmd))
     os.system(cmd)
     logger.info("Out programNextWakeUp")
+
+
+def suspend():
+    logger.info("Suspend machine")
+    subprocess.call(["systemctl", "suspend"])
 
 
 def screenOn():
@@ -268,6 +282,35 @@ def screenOn():
 def screenOff():
     logger.info("Power off screens")
     subprocess.call(["xset", "dpms", "force", "off"])
+
+
+def question(answer):
+    response = MessageDialog('question', "Veux-tu que l'ordinateur passe en mode veille ?", "si tu cliques oui, l'ordinateur va s'éteindre...").run()
+    if response == Gtk.ResponseType.YES:
+        answer.value = True
+    else:
+        answer.value = False
+
+
+def inSuspendMode(delay=300):
+    # Shared memory
+    userAnswer = multiprocessing.Value('b', True)
+
+    # Start question as a process
+    p = multiprocessing.Process(target=question, args=(userAnswer,))
+    p.start()
+    p.join(delay)
+
+    # Terminate answer after delay
+    if p.is_alive():
+        logger.info("Dialog is not terminating, let's kill it")
+        p.terminate()
+        p.join()
+
+    # suspend
+    if userAnswer.value:
+        suspend()
+
 
 
 ##############################################
@@ -317,8 +360,12 @@ def main():
 
         if not launchedIt:
             sendMail(from_user=userMail, to_user=userMail,
-                     subject="Error Rsnapshot was not launched",
+                     subject="Error " + progName + " was not launched",
                      message="Check log file.")
+
+        # put the computer in suspend mode
+        if not parsed_args.dry_run:
+            inSuspendMode()
 
     logger.info("STOP\n")
 
