@@ -341,9 +341,8 @@ def main():
         # be sure that backup is not running
         if not program.isRunning():
             program.startRunning()
-            # Be sure that it has not been already launched today
-            # and that it's the good time to launch it 3h < x < 4h
-            if not program.isLaunchedLastDays(days=7) and inGoodTime() and program.isEnable():
+            # Be sure that it has not been already launched
+            if not program.isLaunchedLastDays(days=20) and inGoodTime() and program.isEnable():
                 logger.debug("In  main isEnable")
                 # shutdown screens to reduce power consuming
                 #screenOff()
