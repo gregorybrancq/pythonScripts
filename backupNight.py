@@ -28,7 +28,7 @@ userMail = "gregory.brancq@free.fr"
 launchedIt = False
 
 # when the computer will wake up
-wakeUpHour = 9
+wakeUpHour = 10
 
 # configuration files
 configFile = os.path.join(getToolsDir(), progName, progName + ".cfg")
@@ -143,16 +143,16 @@ class Backup:
                 if self.tool == "rsnapshot" :
                     cmd = ["/usr/bin/rsnapshot", "-c", self.cfg, period]
                 elif self. tool == "rsync" :
-                    cmd = ["/usr/bin/rsync", "-r", "-n", "-t", "-p", "-o", "-g", "-v",
+                    # add -n option to dry-run
+                    cmd = ["/usr/bin/rsync", "-r", "-t", "-p", "-o", "-g", "-v",
                             "--progress", "--delete", "-l", "-b", "--delete-excluded",
                             "--delete-before", "--ignore-errors", "--filter=. " + self.cfg,
                             "/home/greg/Vidéos/", "/media/backup/video"]
 
-                if parsed_args.dry_run:
-                    logger.info("In  Backup run %s cmd=%s" % (str(period), str(cmd)))
-                else:
-                    logger.info("In  Backup run %s cmd=%s" % (str(period), str(cmd)))
+                logger.info("In  Backup run %s cmd=%s" % (str(period), str(cmd)))
+                if not parsed_args.dry_run:
                     launchedIt = True
+
                     process_backup = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     res = process_backup.communicate()
                     msg = res[0]
@@ -163,32 +163,30 @@ class Backup:
                     message_string = message_bytes.decode()
                     logger.debug("In  Backup returnCode=%s, msg=%s, err=%s" % (
                         str(process_backup.returncode), str(msg), str(err)))
+
+                    # send mail
+                    logger.info("In  Backup sendmail")
+                    status = ""
+                    out_report = ""
+                    if process_backup.returncode != 0:
+                        status = "Error "
+                    
+                    # parse report for mail
                     if self.tool == "rsnapshot" and process_backup.returncode == 0:
-                        if period == "daily":
-                            process_report = subprocess.Popen(["/usr/local/bin/rsnapreport.pl"],
-                                                              stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                                              stderr=subprocess.PIPE)
-                            out_report = process_report.communicate(input=msg)[0]
-                            logger.info("In  Backup daily sendmail out_report=%s" % str(out_report.decode()))
-                            try:
-                                sendMail(from_user=userMail, to_user=userMail,
-                                         subject="Rsnapshot " + self.name + " : " + period,
-                                         message=out_report.decode() + message_string)
-                            except smtplib.SMTPSenderRefused:
-                                # if message is too high to be sent by mail
-                                sendMail(from_user=userMail, to_user=userMail,
-                                         subject="Rsnapshot " + self.name + " : " + period,
-                                         message=out_report)
-                        else:
-                            logger.info("In  Backup not daily sendmail")
-                            sendMail(from_user=userMail, to_user=userMail,
-                                     subject="Rsnapshot " + self.name + " : " + period,
-                                     message=message_string)
-                    else:
-                        logger.info("In  Backup error")
+                        process_report = subprocess.Popen(["/usr/local/bin/rsnapreport.pl"],
+                                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                                          stderr=subprocess.PIPE)
+                        out_report = process_report.communicate(input=msg)[0]
+
+                    try:
                         sendMail(from_user=userMail, to_user=userMail,
-                                 subject="Error Rsnapshot " + self.name + " : " + period,
-                                 message=message_string)
+                                 subject= status + self.tool + " " + self.name + " : " + period,
+                                 message=out_report.decode() + message_string)
+                    except smtplib.SMTPSenderRefused:
+                        # if message is too high to be sent by mail
+                        sendMail(from_user=userMail, to_user=userMail,
+                                 subject= self.tool + " " + self.name + " : " + period,
+                                 message=out_report)
 
 
 class Period:
@@ -302,20 +300,19 @@ def main():
             program.startRunning()
             # Be sure that it has not been already launched today
             # and that it's the good time to launch it 3h < x < 4h
-            if not program.isLaunchedToday() and inGoodTime():
-                if program.isEnable():
-                    logger.debug("In  main isEnable")
-                    # shutdown screens to reduce power consuming
-                    #screenOff()
-                    # compute backups
-                    computeBackups()
-                    # power up screens
-                    #screenOn()
-                    if not parsed_args.dry_run:
-                        # program the next wake up
-                        programNextWakeUp()
-                        # create configFile with today date
-                        program.runToday()
+            if not program.isLaunchedLastDays(days=7) and inGoodTime() and program.isEnable():
+                logger.debug("In  main isEnable")
+                # shutdown screens to reduce power consuming
+                #screenOff()
+                # compute backups
+                computeBackups()
+                # power up screens
+                #screenOn()
+                if not parsed_args.dry_run:
+                    # program the next wake up
+                    programNextWakeUp()
+                    # create configFile with today date
+                    program.runToday()
             program.stopRunning()
 
         if not launchedIt:
