@@ -50,7 +50,7 @@ from lxml import etree
 
 sys.path.append('/home/greg/Config/env/pythonCommon')
 from basic import getHomeDir, getToolsDir
-from log_and_parse import createLog
+from log import LogClass
 
 ###############################################
 ## Global variables
@@ -1250,7 +1250,7 @@ def main() :
 
 
 if __name__ == '__main__':
-    logger = createLog(progName, parsed_args)
+    logger = LogClass(progName, parsed_args.debug).getLogger()
     main()
 
 ###############################################

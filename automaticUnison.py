@@ -156,17 +156,15 @@ class Unison(object):
                 proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 res = proc.communicate()
                 detail = res[0]
-                print("type detail = %s" % type(detail))
                 msg = res[1]
-                print("type msg = %s" % type(msg))
 
                 # analyse
                 if proc.returncode != 0:
-                    error_msg = "Synchronisation failed.\nError with command %s\n\nMessage :\n%s" \
-                                % (str(" ".join(cmd)), str(msg))
-                    logger.error(error_msg)
-                    mail.send(subject=error_msg,
-                              message="See log file %s\nSee config file %s" % (logC.getLogFile(), config_file),
+                    logger.error("Synchronisation failed.\nError with command %s\n\nMessage :\n%s"
+                                 % (str(" ".join(cmd)), msg.decode('utf-8', errors="ignore")))
+                    mail.send(subject="Synchronisation failed with command '%s'" % str(" ".join(cmd)),
+                              message="See log file %s\nSee config file %s\n\nMessage :\n%s"
+                                      % (logC.getLogFile(), config_file, msg.decode('utf-8', errors="ignore")),
                               code=2)
 
                     program.stopRunning()
@@ -184,7 +182,7 @@ def main():
     if not program.isRunning():
         program.startRunning()
 
-        # check if it has been already launched today
+        # check if it has not already been launched today
         if not program.isLaunchedLastDays(days=1):
             unison = Unison()
             # get configuration to launch
@@ -192,6 +190,7 @@ def main():
             # run synchronisation
             unison.runSync()
 
+        program.stopRunning(stop_program=False)
 
     # be sure that synchronisation is launched regularly
     if not program.isLaunchedLastDays(days=7):
@@ -199,7 +198,7 @@ def main():
                   message="See log file %s\nSee config file %s" % (logC.getLogFile(), config_file),
                   code=1)
 
-    program.stopRunning()
+    program.stopLog()
 
 
 if __name__ == '__main__':
