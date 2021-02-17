@@ -10,81 +10,201 @@ import os
 import re
 import subprocess
 import sys
+from optparse import OptionParser
 
 sys.path.append('/home/greg/Config/env/pythonCommon')
+from basic import getToolsDir, getHomeDir
+from log import LogClass
+from program import Program
 from message import MessageDialog
 from network import checkAddress, getIp
+from mail import SendMail
 
 ##############################################
 # Global variables
 ##############################################
 
+prog_name = 'automaticUnison'
+config_file = os.path.join(getToolsDir(), prog_name, prog_name + ".cfg")
+
+# IP
 ipName = dict()
-ipName["192.168.1.100"] = "nas"
-ipName["192.168.1.101"] = "server"
-ipName["192.168.1.102"] = "server_wifi"
-ipName["10.42.0.1"] = "server_shared_internet"
-ipName["10.13.0.6"] = "server_vpn"
-ipName["192.168.1.103"] = "portable"
-ipName["192.168.1.104"] = "portable_wifi"
-ipName["192.168.33.29"] = "portable_office"
-ipName["10.42.0.146"] = "portable_shared_internet"
+ipName["192.168.3.2"] = "neuron"
+ipName["192.168.3.3"] = "focus"
+ipName["192.168.3.14"] = "focus_wifi"
+# ipName["10.42.0.1"] = "server_shared_internet"
+# ipName["10.13.0.6"] = "server_vpn"
+ipName["192.168.3.4"] = "agile"
+ipName["192.168.3.15"] = "agile_wifi"
+# ipName["192.168.33.29"] = "agile_office"
+# ipName["10.42.0.146"] = "portable_shared_internet"
 
 extDisk = "/media/greg/Transcend_600Go"
 
+##############################################
+#              Line Parsing                 ##
+##############################################
+
+parser = OptionParser()
+
+parser.add_option(
+    "--debug",
+    action="store_true",
+    dest="debug",
+    default=False,
+    help="Display all debug information."
+)
+
+parser.add_option(
+    "--nogui",
+    action="store_true",
+    dest="nogui",
+    default=False,
+    help="Don't launch GUI."
+)
+
+parser.add_option(
+    "--dry_run",
+    action="store_true",
+    dest="dry_run",
+    default=False,
+    help="Just print what it does."
+)
+
+(parsed_args, args) = parser.parse_args()
+
 
 ##############################################
-# Functions
+
+
+##############################################
+# Class
 ##############################################
 
-def runSync(local_config, remote_config):
-    name = local_config + "-to-" + remote_config + ".prf"
-    print("Run sync " + name)
-    unison_file = os.path.join(os.getenv("HOME"), ".unison", name)
-    if os.path.isfile(unison_file):
-        cmd = ["unison-gtk", name]
-        proc = subprocess.Popen(cmd, stderr=subprocess.STDOUT)
-        proc.wait()
-    else:
-        print("Your config " + unison_file + " doesn't exist")
+class Unison(object):
+    def __init__(self):
+        self.config_name = str()
+
+    def getConfig(self):
+        # get local IP
+        local_ip = getIp()
+        logger.debug("Local IP = %s" % str(local_ip))
+        local_config = ipName[local_ip]
+        logger.debug("Local config = %s" % str(local_config))
+        # Remove _wifi to the name
+        local_config = re.sub("_wifi", "", local_config)
+        logger.debug("Local config after remove _wifi = %s" % str(local_config))
+
+        # get config name to launch
+        remote_target = ""
+        remote_config = ""
+        if re.search("agile", local_config):
+            # remote_target = "focus"
+            remote_target = "neuron"
+        elif re.search("focus", local_config):
+            remote_target = "agile"
+            # Check if external disk is connected
+            if os.path.isdir(extDisk):
+                local_config = "external_disk"
+                remote_config = "focus"
+
+        for remoteIp in ipName:
+            if re.search(remote_target, ipName[remoteIp]):
+                if checkAddress(remoteIp):
+                    remote_config = ipName[remoteIp]
+                    logger.debug("remote IP = %s, remote config = %s" % (str(remoteIp), str(remote_config)))
+                    break
+
+        if remote_config == "":
+            error_msg = "Can't find Remote IP. Local IP is %s" % local_ip
+            logger.error(error_msg)
+            if not parsed_args.nogui:
+                MessageDialog(dialog_type='error', title="Automatic Synchronisation",
+                              message1=error_msg).run()
+
+            program.stopRunning()
+            sys.exit(1)
+        else:
+            self.config_name = local_config + "-to-" + remote_config + ".prf"
+            logger.info("config name to use : %s" % self.config_name)
+
+    def runSync(self):
+        logger.debug("RunSync config_name = %s" % self.config_name)
+        unison_file = os.path.join(getHomeDir(), ".unison", self.config_name)
+
+        if not os.path.isfile(unison_file):
+            error_msg = "Unison config file %s doesn't exist." % unison_file
+            logger.error(error_msg)
+            if not parsed_args.nogui:
+                MessageDialog(dialog_type='error', title="Automatic Synchronisation",
+                              message1=error_msg).run()
+
+            program.stopRunning()
+            sys.exit(1)
+
+        else:
+            if parsed_args.nogui:
+                cmd = ["unison", self.config_name]
+            else:
+                cmd = ["unison-gtk", self.config_name]
+
+            if parsed_args.dry_run:
+                logger.info("Dry-run : run sync with command %s" % str(" ".join(cmd)))
+            else:
+                # run synchronisation
+                logger.info("Run synchronisation with command '%s'" % str(" ".join(cmd)))
+                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                res = proc.communicate()
+                detail = res[0]
+                print("type detail = %s" % type(detail))
+                msg = res[1]
+                print("type msg = %s" % type(msg))
+
+                # analyse
+                if proc.returncode != 0:
+                    error_msg = "Synchronisation failed.\nError with command %s\n\nMessage :\n%s" \
+                                % (str(" ".join(cmd)), str(msg))
+                    logger.error(error_msg)
+                    mail.send(subject=error_msg,
+                              message="See log file %s\nSee config file %s" % (logC.getLogFile(), config_file),
+                              code=2)
+
+                    program.stopRunning()
+                    sys.exit(1)
+                else:
+                    logger.info("Program output : \n%s" % msg.decode('utf-8', errors="ignore"))
+                    logger.debug("Program detail : \n%s" % detail.decode('utf-8', errors="ignore"))
+                    if not parsed_args.dry_run:
+                        # Update config file
+                        program.runToday()
 
 
 def main():
-    remote_config = ""
-    remote_target = ""
+    # check if synchronisation is not currently running
+    if not program.isRunning():
+        program.startRunning()
 
-    local_ip = getIp()
-    print("Local IP = %s" % str(local_ip))
-    local_config = ipName[local_ip]
-    print("Local config = %s" % str(local_config))
-    # Remove _wifi to the name
-    local_config = re.sub("_wifi", "", local_config)
-    print("Local config after remove _wifi = %s" % str(local_config))
+        # check if it has been already launched today
+        if not program.isLaunchedLastDays(days=1):
+            unison = Unison()
+            # get configuration to launch
+            unison.getConfig()
+            # run synchronisation
+            unison.runSync()
 
-    if re.search("portable", local_config):
-        #remote_target = "server"
-        remote_target = "nas"
-    elif re.search("server", local_config):
-        remote_target = "portable"
-        # Check if external disk is connected
-        if os.path.isdir(extDisk):
-            local_config = "external_disk"
-            remote_config = "server"
 
-    for remoteIp in ipName:
-        if re.search(remote_target, ipName[remoteIp]):
-            if checkAddress(remoteIp):
-                remote_config = ipName[remoteIp]
-                print("Remote IP = %s" % str(remoteIp))
-                print("Remote config = %s" % str(remote_config))
-                break
+    # be sure that synchronisation is launched regularly
+    if not program.isLaunchedLastDays(days=7):
+        mail.send(subject="Not launched since more than 7 days",
+                  message="See log file %s\nSee config file %s" % (logC.getLogFile(), config_file),
+                  code=1)
 
-    if remote_config == "":
-        MessageDialog(dialog_type='error', title="Automatic Synchronisation",
-                      message1="Can't find Remote IP.\nLocal IP is " + str(local_ip) + ".").run()
-    else:
-        runSync(local_config, remote_config)
+    program.stopRunning()
 
 
 if __name__ == '__main__':
+    logC = LogClass(prog_name, parsed_args.debug)
+    logger = logC.getLogger()
+    mail = SendMail(prog_name=prog_name)
+    program = Program(prog_name=prog_name, config_file=config_file)
     main()
