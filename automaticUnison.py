@@ -182,8 +182,15 @@ def main():
     if not program.isRunning():
         program.startRunning()
 
+        # in gui mode, it must be always launch
+        launch_it = False
+        if not parsed_args.nogui:
+            launch_it = True
         # check if it has not already been launched today
-        if not program.isLaunchedLastDays(days=1):
+        elif not program.isLaunchedLastDays(days=1):
+            launch_it = True
+
+        if launch_it:
             unison = Unison()
             # get configuration to launch
             unison.getConfig()
