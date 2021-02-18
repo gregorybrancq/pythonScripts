@@ -8,7 +8,7 @@ It computes the different backups configuration, and can turn off/on screens to 
 The cron command to launch it the first monday of the month at 10:03 :
 3   10  1-7 *   *   [ "$(date '+\%u')" = "1" ] &&
                         export DISPLAY=:0.0 &&
-                        nice +10 /home/greg/Config/env/bin/backupInternalDisk
+                        nice +10 /home/greg/Tools/env/bin/backupInternalDisk
 
 and to be sure that computer will wake up, you can add :
 #0   12  *   *   *    export DISPLAY=:0.0 &&
@@ -21,10 +21,10 @@ import sys
 from datetime import datetime
 from optparse import OptionParser
 
-sys.path.append('/home/greg/Config/env/pythonCommon')
+sys.path.append('/home/greg/Tools/env/pythonCommon')
 from program import Program
 from mail import SendMail
-from basic import getToolsDir
+from basic import getConfigDir
 from log import LogClass
 from message import KillQuestionAfterDelay
 from shell_commands import suspendComputer
@@ -39,9 +39,9 @@ prog_name = "backupInternalDisk"
 wakeUpHour = 10
 
 # configuration files
-config_file = os.path.join(getToolsDir(), prog_name, prog_name + ".cfg")
-rsnapshotFocus = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_focus.conf")
-rsyncFocus = os.path.join(getToolsDir(), "grsync", "videos.filter")
+config_file = os.path.join(getConfigDir(), prog_name, prog_name + ".cfg")
+rsnapshotFocus = os.path.join(getConfigDir(), "rsnapshot", "rsnapshot_focus.conf")
+rsyncFocus = os.path.join(getConfigDir(), "grsync", "videos.filter")
 # rsnapshotQuantum = os.path.join(getToolsDir(), "rsnapshot", "rsnapshot_quantum.conf")
 
 ##############################################

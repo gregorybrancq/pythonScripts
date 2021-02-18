@@ -48,8 +48,8 @@ warnings.simplefilter('ignore', Image.DecompressionBombWarning)
 import xml.etree.ElementTree as ET
 from lxml import etree
 
-sys.path.append('/home/greg/Config/env/pythonCommon')
-from basic import getHomeDir, getToolsDir
+sys.path.append('/home/greg/Tools/env/pythonCommon')
+from basic import getHomeDir, getConfigDir
 from log import LogClass
 
 ###############################################
@@ -59,12 +59,12 @@ from log import LogClass
 progName = "screensaverLink"
 
 # configuration files
-progIcon = os.path.join(getToolsDir(), "icons", "screensaverLink.png")
+progIcon = os.path.join(getConfigDir(), "icons", "screensaverLink.png")
 
 ## Official
 imagesDir = os.path.join(getHomeDir(), "Images")
 linkDir = os.path.join(getHomeDir(), ".screensaver")
-configDir = os.path.join(getToolsDir(), progName)
+configDir = os.path.join(getConfigDir(), progName)
 configName = "config.xml"
 
 ## Test

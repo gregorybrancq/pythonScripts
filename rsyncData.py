@@ -11,8 +11,8 @@ import sys
 import socket
 from optparse import OptionParser
 
-sys.path.append('/home/greg/Config/env/pythonCommon')
-from basic import getToolsDir
+sys.path.append('/home/greg/Tools/env/pythonCommon')
+from basic import getConfigDir
 from log import LogClass
 from program import Program
 from mail import SendMail
@@ -79,7 +79,7 @@ class Rsync(object):
         """ get the directories names of source and target"""
         self.source = os.path.join(data_dir, self.tool, pc_name, "*")
         self.destination = str()
-        self.destination += os.path.join(getToolsDir(), self.tool, pc_name)
+        self.destination += os.path.join(getConfigDir(), self.tool, pc_name)
 
         # check if source exists
         source_wo_star = re.sub("/\*", "", self.source)
@@ -143,7 +143,7 @@ def main():
     pc_name = socket.gethostname()
 
     # config file name
-    config_file = os.path.join(getToolsDir(), prog_name, prog_name + "_" + pc_name + ".cfg")
+    config_file = os.path.join(getConfigDir(), prog_name, prog_name + "_" + pc_name + ".cfg")
     program.set_config_file(config_file)
 
     # check if synchronisation is not currently running

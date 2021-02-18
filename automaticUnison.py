@@ -12,8 +12,8 @@ import subprocess
 import sys
 from optparse import OptionParser
 
-sys.path.append('/home/greg/Config/env/pythonCommon')
-from basic import getToolsDir, getHomeDir
+sys.path.append('/home/greg/Tools/env/pythonCommon')
+from basic import getConfigDir, getHomeDir
 from log import LogClass
 from program import Program
 from message import MessageDialog
@@ -25,7 +25,7 @@ from mail import SendMail
 ##############################################
 
 prog_name = 'automaticUnison'
-config_file = os.path.join(getToolsDir(), prog_name, prog_name + ".cfg")
+config_file = os.path.join(getConfigDir(), prog_name, prog_name + ".cfg")
 
 # IP
 ipName = dict()

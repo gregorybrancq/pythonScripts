@@ -15,7 +15,7 @@ import re
 import sys
 from optparse import OptionParser
 
-sys.path.append('/home/greg/Config/env/pythonCommon')
+sys.path.append('/home/greg/Tools/env/pythonCommon')
 from log import LogClass
 
 ##############################################
