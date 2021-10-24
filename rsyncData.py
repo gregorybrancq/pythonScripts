@@ -77,7 +77,7 @@ class Rsync(object):
 
     def getDirName(self):
         """ get the directories names of source and target"""
-        self.source = os.path.join(data_dir, self.tool, pc_name, "*")
+        self.source = os.path.join(data_dir, self.tool, pc_name) + "/"
         self.destination = str()
         self.destination += os.path.join(getConfigDir(), self.tool, pc_name)
 
@@ -95,18 +95,16 @@ class Rsync(object):
 
     def rsyncData(self):
         # construct command
-        cmd = ["/usr/bin/rsync", "-rulpgvz", "--progress", "--delete", "-e",
+        cmd = ["/usr/bin/rsync", "-rtlpgovb", "--progress", "--delete",
                self.source, self.destination]
 
         if parsed_args.dry_run:
             logger.info("Dry-run : rsync data with command = %s" % str(" ".join(cmd)))
         else:
-            logger.info("Run synchronisation with command = %s" % str(" ".join(cmd)))
+            logger.info("Run synchronisation for tool %s with command = %s" % (self.tool, str(" ".join(cmd))))
             # run synchronisation
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            res = proc.communicate()
-            detail = res[0]
-            msg = res[1]
+            msg, err = proc.communicate()
 
             # analyse
             if proc.returncode != 0:
@@ -120,8 +118,8 @@ class Rsync(object):
                 program.stopRunning()
                 sys.exit(1)
             else:
-                logger.info("Program output : \n%s" % msg.decode('utf-8', errors="ignore"))
-                logger.debug("Program detail : \n%s" % detail.decode('utf-8', errors="ignore"))
+                logger.debug("Program output : \n%s" % msg.decode('utf-8', errors="ignore"))
+                logger.info("Program error : \n%s" % err.decode('utf-8', errors="ignore"))
 
     def run(self):
         self.getDirName()
